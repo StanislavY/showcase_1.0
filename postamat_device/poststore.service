@@ -1,0 +1,12 @@
+[Unit]
+Description=PostStore Service
+After=multi-user.target
+
+[Service]
+Type=simple
+WorkingDirectory=/postamat/src
+ExecStart=/postamat/venv/bin/python main.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

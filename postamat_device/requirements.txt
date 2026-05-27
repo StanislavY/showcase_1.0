@@ -1,0 +1,11 @@
+certifi==2023.7.22
+charset-normalizer==3.2.0
+idna==3.4
+pyMultiSerial==1.1.1
+pyserial==3.5
+requests==2.31.0
+urllib3==2.0.4
+
+
+
+
