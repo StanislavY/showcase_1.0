@@ -66,6 +66,20 @@ class HardwareClient:
 
     Public surface is intentionally small so the rest of the app stays
     decoupled from ``pyserial`` and from ``postamat_device``.
+
+    Status reading
+    --------------
+    The current legacy protocol (see ``Arduino.open_cell`` in
+    ``postamat_device/libs/serial_ports_mng.py``) is write-only: the
+    backend sends a cell number and never reads back whether the cell
+    physically opened. As a result this client deliberately does NOT
+    expose a ``get_cell_status`` method or a polling thread — adding
+    one would require fabricating commands the real controller does
+    not support.
+
+    TODO: Здесь нужно подключить реальное чтение статуса ячейки от
+    контроллера, как только согласуем ответную часть протокола
+    Arduino (формат сообщений, признак конкретной ячейки, тайминги).
     """
 
     def __init__(self) -> None:
@@ -94,6 +108,16 @@ class HardwareClient:
         Returns True if the command was dispatched successfully,
         False on any error. We do NOT verify the physical state of
         the cell — only the fact that the command left the backend.
+
+        TODO: Здесь нужно подключить реальное чтение статуса ячейки от
+        контроллера. Сейчас в legacy-слое
+        ``postamat_device/libs/serial_ports_mng.py`` метод
+        ``Arduino.open_cell`` только ``write(...)`` в serial-порт и не
+        читает ответ. Когда контроллер начнёт отдавать состояние
+        ("opened" / "closed" / "error"), здесь следует добавить
+        чтение этой части протокола и вернуть наверх не bool, а
+        доменный статус — либо отдельным методом ``get_cell_status``.
+        Делать это до подтверждения формата ответа от железа нельзя.
         """
         arduino = self._arduino
         if arduino is None:
