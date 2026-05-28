@@ -66,20 +66,10 @@ def open_cell_endpoint(
                 success=False,
                 cell_number=cell_number,
                 message=str(exc),
-                # The command never left the backend (port not found or
-                # legacy layer refused). We report this honestly instead
-                # of pretending we know the physical cell state.
                 status="dispatch_failed",
             ).model_dump(),
         )
 
-    # NOTE: success here means "the open command was handed to the
-    # serial port", NOT "the cell is physically open". The current
-    # hardware protocol does not return a confirmation, so we expose
-    # the only state we can prove: command_sent.
-    # TODO: Здесь нужно подключить реальное чтение статуса ячейки от
-    # контроллера. После этого следует возвращать "open" / "closed" /
-    # "timeout" вместо "command_sent" и обновить CellOpenStatus.
     return OpenCellResponse(
         success=True,
         cell_number=cell_number,

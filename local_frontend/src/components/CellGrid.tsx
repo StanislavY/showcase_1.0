@@ -4,10 +4,12 @@ import { CellCard } from "./CellCard";
 
 interface CellGridProps {
   cells: Cell[];
+  openingCellId: number | null;
   onSelect: (cellId: number) => void;
 }
 
-export function CellGrid({ cells, onSelect }: CellGridProps) {
+export function CellGrid({ cells, openingCellId, onSelect }: CellGridProps) {
+  const isBusy = openingCellId !== null;
   return (
     <Box
       sx={{
@@ -22,7 +24,13 @@ export function CellGrid({ cells, onSelect }: CellGridProps) {
       }}
     >
       {cells.map((cell) => (
-        <CellCard key={cell.id} cellId={cell.id} onSelect={onSelect} />
+        <CellCard
+          key={cell.id}
+          cellId={cell.id}
+          disabled={isBusy}
+          isLoading={openingCellId === cell.id}
+          onSelect={onSelect}
+        />
       ))}
     </Box>
   );

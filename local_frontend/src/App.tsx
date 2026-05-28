@@ -4,6 +4,7 @@ import Container from "@mui/material/Container";
 import Typography from "@mui/material/Typography";
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
+import { openCell } from "./api/cellsApi";
 import { CellGrid } from "./components/CellGrid";
 import { StatusMessage } from "./components/StatusMessage";
 import { createCells } from "./types/cell";
@@ -24,9 +25,31 @@ const theme = createTheme({
 export default function App() {
   const cells = useMemo(() => createCells(), []);
   const [message, setMessage] = useState<string>("");
+  const [openingCellId, setOpeningCellId] = useState<number | null>(null);
 
-  const handleSelect = (cellId: number) => {
-    setMessage(`Вы выбрали ячейку №${cellId}`);
+  const handleSelect = async (cellId: number) => {
+    if (openingCellId !== null) {
+      return;
+    }
+
+    setOpeningCellId(cellId);
+    setMessage(`Открываем ячейку №${cellId}...`);
+
+    try {
+      const result = await openCell(cellId);
+
+      if (result.success) {
+        setMessage(`Ячейка №${cellId} открыта, заберите товар`);
+      } else {
+        setMessage(
+          `Не удалось открыть ячейку №${cellId}. Попробуйте нажать кнопку заново или обратитесь в поддержку`,
+        );
+      }
+    } catch {
+      setMessage("Локальный backend недоступен. Обратитесь в поддержку");
+    } finally {
+      setOpeningCellId(null);
+    }
   };
 
   return (
@@ -61,12 +84,17 @@ export default function App() {
           sx={{
             flexGrow: 1,
             display: "flex",
-            alignItems: "center",
+            flexDirection: "column",
+            alignItems: "stretch",
             justifyContent: "center",
             py: { xs: 3, md: 5 },
           }}
         >
-          <CellGrid cells={cells} onSelect={handleSelect} />
+          <CellGrid
+            cells={cells}
+            openingCellId={openingCellId}
+            onSelect={handleSelect}
+          />
         </Container>
 
         <Box

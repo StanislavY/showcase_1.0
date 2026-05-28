@@ -133,8 +133,6 @@ class HardwareClient:
                     cell_number,
                 )
                 return False
-            # The legacy API expects a string, mirroring the existing
-            # callsites in ``serial_ports_mng.process_opening_by_button``.
             arduino.open_cell(str(cell_number))
             return True
         except Exception as exc:  # noqa: BLE001

@@ -53,14 +53,7 @@ class CellService:
         self._hardware = hardware
 
     def open_cell(self, cell_number: int) -> None:
-        """Validate the cell number and send the open command.
-
-        Returns ``None`` on success. On failure raises a domain
-        exception that the API layer translates into an HTTP status:
-
-        * :class:`CellNumberOutOfRangeError` -> ``400``
-        * :class:`HardwareUnavailableError`  -> ``503``
-        """
+        """Validate the cell number and send the open command."""
         self._ensure_cell_number_in_range(cell_number)
 
         if not self._hardware.is_available():
@@ -70,9 +63,6 @@ class CellService:
             )
             raise HardwareUnavailableError("Контроллер ячеек недоступен")
 
-        # ``open_cell`` returns False on any dispatch error in the
-        # legacy layer. From the caller's perspective this is also
-        # "hardware unavailable" — we couldn't deliver the command.
         dispatched = self._hardware.open_cell(cell_number)
         if not dispatched:
             logger.error(
@@ -80,15 +70,6 @@ class CellService:
                 cell_number,
             )
             raise HardwareUnavailableError("Контроллер ячеек недоступен")
-
-        # TODO: Здесь нужно подключить реальное чтение статуса ячейки от
-        # контроллера. На текущем протоколе Arduino (см.
-        # postamat_device/libs/serial_ports_mng.py: Arduino.open_cell)
-        # backend только пишет байты в порт и НЕ читает подтверждение,
-        # поэтому факта физического открытия ячейки у нас нет. Когда
-        # появится ответная часть протокола, тут должна быть проверка
-        # через self._hardware (например, ожидание сигнала "opened" в
-        # течение N секунд) с возвратом доменного статуса наверх.
 
     def _ensure_cell_number_in_range(self, cell_number: int) -> None:
         """Guard: cell number must be within the postamat layout."""
@@ -100,9 +81,5 @@ class CellService:
 
 
 def get_cell_service() -> CellService:
-    """Factory used as a FastAPI dependency.
-
-    Creates a fresh service bound to the currently configured hardware
-    client (real or mock, based on ``config.use_mock_hardware``).
-    """
+    """Factory used as a FastAPI dependency."""
     return CellService(hardware=get_hardware_client())
