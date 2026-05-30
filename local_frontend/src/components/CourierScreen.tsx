@@ -21,11 +21,7 @@ import {
 } from "../api/courierApi";
 import { ApiError } from "../api/client";
 import { CellGrid } from "./CellGrid";
-import {
-  CELL_STATUS_LEGEND,
-  CELL_STATUS_TONES,
-  countByVisualStatus,
-} from "./cellStatusView";
+import { CELL_STATUS_LEGEND, CELL_STATUS_TONES } from "./cellStatusView";
 import { OperationPanel } from "./OperationPanel";
 import { StartOperationDialog } from "./StartOperationDialog";
 import type { Cell } from "../types/cell";
@@ -195,10 +191,10 @@ export function CourierScreen({ courierId, onLogout }: CourierScreenProps) {
         minHeight: "100vh",
         touchAction: "manipulation",
         overflowX: "hidden",
-        background:
-          "radial-gradient(circle at top left, rgba(198, 244, 229, 0.45), transparent 35%)," +
-          "radial-gradient(circle at top right, rgba(255, 239, 202, 0.55), transparent 30%)," +
-          "linear-gradient(135deg, #f5faf7 0%, #f8f1e5 100%)",
+        backgroundImage: 'url("/courier-bg.png")',
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
         backgroundAttachment: "fixed",
       }}
     >
@@ -329,102 +325,6 @@ export function CourierScreen({ courierId, onLogout }: CourierScreenProps) {
               >
                 Обновить
               </Button>
-            </Box>
-
-            <Box
-              sx={{
-                mb: 2,
-                display: "grid",
-                gap: 1.25,
-                gridTemplateColumns: {
-                  xs: "repeat(2, minmax(0, 1fr))",
-                  sm: "repeat(3, minmax(0, 1fr))",
-                  md: "repeat(5, minmax(0, 1fr))",
-                },
-              }}
-            >
-              {(() => {
-                const counts = countByVisualStatus(cells);
-                const items: {
-                  label: string;
-                  value: number;
-                  bg: string;
-                  border: string;
-                  color: string;
-                }[] = [
-                  {
-                    label: "Всего ячеек",
-                    value: cells.length,
-                    bg: "rgba(244, 247, 250, 0.9)",
-                    border: "rgba(150, 165, 182, 0.45)",
-                    color: "#3c4855",
-                  },
-                  {
-                    label: "Заполнены",
-                    value: counts.loaded,
-                    bg: "rgba(223, 247, 232, 0.9)",
-                    border: "rgba(88, 199, 131, 0.5)",
-                    color: "#15643c",
-                  },
-                  {
-                    label: "Зарезервированы",
-                    value: counts.reserved,
-                    bg: "rgba(255, 241, 210, 0.9)",
-                    border: "rgba(227, 180, 92, 0.5)",
-                    color: "#8a5a12",
-                  },
-                  {
-                    label: "Пустые",
-                    value: counts.empty,
-                    bg: "rgba(248, 250, 252, 0.95)",
-                    border: "rgba(203, 213, 225, 0.7)",
-                    color: "#475569",
-                  },
-                  {
-                    label: "Ошибки",
-                    value: counts.error,
-                    bg: "rgba(255, 226, 226, 0.9)",
-                    border: "rgba(239, 107, 107, 0.5)",
-                    color: "#9c2229",
-                  },
-                ];
-                return items.map((item) => (
-                  <Box
-                    key={item.label}
-                    sx={{
-                      px: 1.75,
-                      py: 1.25,
-                      borderRadius: "16px",
-                      bgcolor: item.bg,
-                      border: "1px solid",
-                      borderColor: item.border,
-                      boxShadow: "0 8px 20px rgba(31, 41, 55, 0.06)",
-                    }}
-                  >
-                    <Typography
-                      sx={{
-                        fontSize: "0.7rem",
-                        fontWeight: 700,
-                        letterSpacing: "0.04em",
-                        textTransform: "uppercase",
-                        color: "rgba(28, 47, 66, 0.55)",
-                      }}
-                    >
-                      {item.label}
-                    </Typography>
-                    <Typography
-                      sx={{
-                        fontSize: "1.6rem",
-                        fontWeight: 800,
-                        lineHeight: 1.1,
-                        color: item.color,
-                      }}
-                    >
-                      {item.value}
-                    </Typography>
-                  </Box>
-                ));
-              })()}
             </Box>
 
             <Box
