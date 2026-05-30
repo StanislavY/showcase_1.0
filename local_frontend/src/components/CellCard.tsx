@@ -1,15 +1,13 @@
-import Card from "@mui/material/Card";
-import CardActionArea from "@mui/material/CardActionArea";
-import Chip from "@mui/material/Chip";
-import Stack from "@mui/material/Stack";
+import Box from "@mui/material/Box";
+import ButtonBase from "@mui/material/ButtonBase";
 import Typography from "@mui/material/Typography";
-import type { Cell } from "../types/cell";
-import {
-  CELL_STATUS_COLOR,
-  CELL_STATUS_LABEL,
-  LOCK_STATUS_COLOR,
-  LOCK_STATUS_LABEL,
-} from "../labels";
+import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import LockOpenOutlinedIcon from "@mui/icons-material/LockOpenOutlined";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import type { SvgIconComponent } from "@mui/icons-material";
+import type { Cell, LockStatus } from "../types/cell";
+import { getCellStatusView } from "./cellStatusView";
 
 interface CellCardProps {
   cell: Cell;
@@ -17,71 +15,188 @@ interface CellCardProps {
   onSelect: (cell: Cell) => void;
 }
 
-export function CellCard({ cell, disabled, onSelect }: CellCardProps) {
+/** Feminine lock labels ("ячейка закрыта") shown on the small lock chip. */
+const LOCK_VIEW: Record<LockStatus, { label: string; icon: SvgIconComponent }> =
+  {
+    CLOSED: { label: "Закрыта", icon: LockOutlinedIcon },
+    OPEN: { label: "Открыта", icon: LockOpenOutlinedIcon },
+    UNKNOWN: { label: "Неизвестно", icon: HelpOutlineIcon },
+    ERROR: { label: "Ошибка", icon: HelpOutlineIcon },
+  };
+
+interface CardChipProps {
+  label: string;
+  icon: SvgIconComponent;
+  bg: string;
+  color: string;
+  border: string;
+}
+
+function CardChip({ label, icon: Icon, bg, color, border }: CardChipProps) {
   return (
-    <Card
-      elevation={3}
+    <Box
       sx={{
-        borderRadius: 3,
-        aspectRatio: "1 / 1",
-        opacity: disabled ? 0.5 : 1,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "flex-start",
+        gap: 0.4,
+        px: 0.75,
+        py: 0.25,
+        borderRadius: 999,
+        bgcolor: bg,
+        border: "1px solid",
+        borderColor: border,
+        maxWidth: "100%",
       }}
     >
-      <CardActionArea
-        disabled={disabled}
-        onClick={() => onSelect(cell)}
+      <Icon sx={{ fontSize: 13, color, flexShrink: 0 }} />
+      <Typography
+        component="span"
         sx={{
-          height: "100%",
-          p: 1,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 0.5,
-          textAlign: "center",
+          fontSize: "0.68rem",
+          fontWeight: 700,
+          lineHeight: 1.15,
+          color,
+          textAlign: "left",
+          overflowWrap: "anywhere",
         }}
       >
-        <Typography
-          variant="caption"
-          sx={{ color: "text.secondary", lineHeight: 1, letterSpacing: 1 }}
-        >
-          ЯЧЕЙКА
-        </Typography>
-        <Typography
-          variant="h3"
-          sx={{ fontWeight: 700, lineHeight: 1, color: "primary.main" }}
-        >
-          {cell.number}
-        </Typography>
+        {label}
+      </Typography>
+    </Box>
+  );
+}
 
-        <Typography
-          variant="body2"
+export function CellCard({ cell, disabled, onSelect }: CellCardProps) {
+  const view = getCellStatusView(cell);
+  const { tone } = view;
+  const StatusIcon = view.icon;
+  const lock = LOCK_VIEW[cell.lock_status];
+
+  const hasProduct = !!cell.product_name && cell.product_name.trim() !== "";
+  const productText = hasProduct ? cell.product_name : "Ячейка свободна";
+
+  return (
+    <ButtonBase
+      disabled={disabled}
+      onClick={() => onSelect(cell)}
+      focusRipple
+      sx={{
+        display: "block",
+        width: "100%",
+        textAlign: "left",
+        borderRadius: "16px",
+        opacity: disabled ? 0.55 : 1,
+        transition:
+          "transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease",
+        "& .cell-card": { height: "100%" },
+        "@media (hover: hover)": {
+          "&:hover .cell-card": {
+            transform: "translateY(-2px)",
+            boxShadow: "0 10px 22px rgba(15, 50, 70, 0.18)",
+            borderColor: tone.borderActive,
+          },
+        },
+        "&:active .cell-card": {
+          transform: "translateY(-1px)",
+          boxShadow: "0 6px 14px rgba(15, 50, 70, 0.2)",
+          borderColor: tone.borderActive,
+        },
+      }}
+    >
+      <Box
+        className="cell-card"
+        sx={{
+          minHeight: 124,
+          display: "flex",
+          flexDirection: "column",
+          p: 1.5,
+          borderRadius: "16px",
+          bgcolor: tone.bg,
+          border: "1px solid",
+          borderColor: tone.border,
+          boxShadow: "0 4px 12px rgba(15, 50, 70, 0.1)",
+          cursor: "pointer",
+          overflow: "hidden",
+        }}
+      >
+        <Box
           sx={{
-            color: "text.secondary",
-            maxWidth: "100%",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            gap: 0.75,
           }}
         >
-          {cell.product_name ?? "—"}
-        </Typography>
+          <Typography
+            component="span"
+            sx={{
+              fontWeight: 800,
+              fontSize: "1.25rem",
+              lineHeight: 1.1,
+              color: tone.numberColor,
+            }}
+          >
+            #{cell.number}
+          </Typography>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-end",
+              gap: 0.4,
+              minWidth: 0,
+            }}
+          >
+            <CardChip
+              label={view.shortLabel}
+              icon={StatusIcon}
+              bg={tone.chipBg}
+              color={tone.chipColor}
+              border={tone.border}
+            />
+            <CardChip
+              label={lock.label}
+              icon={lock.icon}
+              bg="rgba(255, 255, 255, 0.6)"
+              color="rgba(45, 60, 72, 0.85)"
+              border="rgba(120, 134, 150, 0.4)"
+            />
+          </Box>
+        </Box>
 
-        <Stack spacing={0.5} alignItems="center" sx={{ width: "100%" }}>
-          <Chip
-            size="small"
-            label={CELL_STATUS_LABEL[cell.status]}
-            color={CELL_STATUS_COLOR[cell.status]}
-            variant="filled"
+        <Box
+          sx={{
+            flexGrow: 1,
+            mt: 1,
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 0.6,
+            minWidth: 0,
+          }}
+        >
+          <Inventory2OutlinedIcon
+            sx={{ fontSize: 17, color: tone.iconColor, mt: "1px", flexShrink: 0 }}
           />
-          <Chip
-            size="small"
-            label={LOCK_STATUS_LABEL[cell.lock_status]}
-            color={LOCK_STATUS_COLOR[cell.lock_status]}
-            variant="outlined"
-          />
-        </Stack>
-      </CardActionArea>
-    </Card>
+          <Typography
+            sx={{
+              fontSize: "0.9rem",
+              fontWeight: hasProduct ? 700 : 600,
+              lineHeight: 1.2,
+              color: hasProduct
+                ? "rgba(28, 42, 54, 0.92)"
+                : "rgba(28, 42, 54, 0.6)",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+              wordBreak: "break-word",
+            }}
+          >
+            {productText}
+          </Typography>
+        </Box>
+      </Box>
+    </ButtonBase>
   );
 }

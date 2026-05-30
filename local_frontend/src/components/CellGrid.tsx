@@ -16,9 +16,9 @@ export function CellGrid({ cells, disabled, onSelect }: CellGridProps) {
         width: "100%",
         gap: { xs: 1.5, sm: 2 },
         gridTemplateColumns: {
-          xs: "repeat(2, 1fr)",
-          sm: "repeat(4, 1fr)",
-          md: "repeat(6, 1fr)",
+          xs: "repeat(2, minmax(0, 1fr))",
+          sm: "repeat(4, minmax(0, 1fr))",
+          md: "repeat(6, minmax(0, 1fr))",
         },
       }}
     >

@@ -5,3 +5,11 @@ export interface CourierLoginResponse {
   courier_id: string | null;
   message: string;
 }
+
+/** Result of an admin login attempt returned by the backend. */
+export interface AdminLoginResponse {
+  success: boolean;
+  token: string | null;
+  admin_id: string | null;
+  message: string;
+}
