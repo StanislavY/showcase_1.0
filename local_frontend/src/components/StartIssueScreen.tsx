@@ -2,17 +2,16 @@ import { useCallback, useEffect, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import ButtonBase from "@mui/material/ButtonBase";
 import CircularProgress from "@mui/material/CircularProgress";
 import Container from "@mui/material/Container";
-import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import EngineeringIcon from "@mui/icons-material/Engineering";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import { fetchCells } from "../api/cellsApi";
 import { fetchSalesLimit, sellFromCell } from "../api/salesApi";
 import { ApiError } from "../api/client";
-import { getCellStatusView } from "./cellStatusView";
+import { CellGrid } from "./CellGrid";
+import { CELL_STATUS_LEGEND, CELL_STATUS_TONES } from "./cellStatusView";
 import {
   glassButtonSx,
   glassPanelSx,
@@ -50,13 +49,11 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Price is stored in roubles on the backend; show it with two decimals. */
-function formatPrice(price: number): string {
+function isCellSellable(cell: Cell): boolean {
   return (
-    price.toLocaleString("ru-RU", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }) + " ₽"
+    cell.status === "LOADED" &&
+    cell.product_name !== null &&
+    cell.product_price !== null
   );
 }
 
@@ -106,7 +103,7 @@ export function StartIssueScreen({
     limit.remaining_amount_kopecks <= 0;
 
   const handleSell = async (cell: Cell) => {
-    if (busy || limitExhausted) return;
+    if (busy || limitExhausted || !isCellSellable(cell)) return;
     setBusy(true);
     setStatus({ severity: "info", text: "Проверяем ячейку..." });
     await delay(350);
@@ -164,124 +161,56 @@ export function StartIssueScreen({
               <CircularProgress />
             </Box>
           ) : (
-            <Box
-              sx={{
-                display: "grid",
-                width: "100%",
-                gap: { xs: 1.5, sm: 2 },
-                gridTemplateColumns: {
-                  xs: "repeat(3, 1fr)",
-                  sm: "repeat(5, 1fr)",
-                  md: "repeat(6, 1fr)",
-                },
-              }}
-            >
-              {cells.map((cell) => {
-                const hasProduct =
-                  cell.status === "LOADED" &&
-                  cell.product_name !== null &&
-                  cell.product_price !== null;
-                const { tone } = getCellStatusView(cell);
-                return (
-                  <ButtonBase
-                    key={cell.number}
-                    disabled={busy || limitExhausted}
-                    onClick={() => void handleSell(cell)}
-                    focusRipple
-                    sx={{
-                      display: "block",
-                      width: "100%",
-                      borderRadius: "16px",
-                      opacity: busy || limitExhausted ? 0.5 : 1,
-                      transition:
-                        "transform 0.15s ease, box-shadow 0.15s ease",
-                      "& .issue-cell": { height: "100%" },
-                      "@media (hover: hover)": {
-                        "&:hover .issue-cell": {
-                          transform: "translateY(-2px)",
-                          boxShadow: "0 10px 22px rgba(15, 50, 70, 0.18)",
-                        },
-                      },
-                      "&:active .issue-cell": {
-                        transform: "translateY(-1px)",
-                      },
-                    }}
+            <>
+              <Box
+                sx={{
+                  mb: 2,
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  gap: { xs: 1, sm: 2 },
+                  px: 1.75,
+                  py: 1.1,
+                  borderRadius: "14px",
+                  bgcolor: "rgba(255, 255, 255, 0.9)",
+                  border: "1px solid rgba(180, 205, 200, 0.45)",
+                  boxShadow: "0 6px 16px rgba(26, 47, 66, 0.06)",
+                }}
+              >
+                {CELL_STATUS_LEGEND.map((entry) => (
+                  <Box
+                    key={entry.status}
+                    sx={{ display: "flex", alignItems: "center", gap: 0.75 }}
                   >
                     <Box
-                      className="issue-cell"
                       sx={{
-                        aspectRatio: "1 / 1",
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 0.5,
-                        p: 1,
-                        textAlign: "center",
-                        borderRadius: "16px",
-                        bgcolor: tone.bg,
-                        border: "1px solid",
-                        borderColor: tone.border,
-                        boxShadow: "0 4px 12px rgba(15, 50, 70, 0.1)",
-                        overflow: "hidden",
+                        width: 12,
+                        height: 12,
+                        borderRadius: "4px",
+                        flexShrink: 0,
+                        bgcolor: CELL_STATUS_TONES[entry.status].dot,
+                      }}
+                    />
+                    <Typography
+                      sx={{
+                        fontSize: "0.8rem",
+                        fontWeight: 600,
+                        color: "rgba(28, 47, 66, 0.7)",
                       }}
                     >
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: tone.chipColor,
-                          lineHeight: 1,
-                          letterSpacing: 1,
-                          fontWeight: 700,
-                        }}
-                      >
-                        ЯЧЕЙКА
-                      </Typography>
-                      <Typography
-                        variant="h3"
-                        sx={{
-                          fontWeight: 800,
-                          lineHeight: 1,
-                          color: tone.numberColor,
-                        }}
-                      >
-                        {cell.number}
-                      </Typography>
-                      {hasProduct ? (
-                        <Stack spacing={0.25} sx={{ width: "100%" }}>
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              fontWeight: 700,
-                              color: "rgba(28, 42, 54, 0.92)",
-                              maxWidth: "100%",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {cell.product_name}
-                          </Typography>
-                          <Typography
-                            variant="body1"
-                            sx={{ fontWeight: 800, color: tone.numberColor }}
-                          >
-                            {formatPrice(cell.product_price as number)}
-                          </Typography>
-                        </Stack>
-                      ) : (
-                        <Typography
-                          variant="body2"
-                          sx={{ color: tone.chipColor, fontWeight: 600 }}
-                        >
-                          Пусто
-                        </Typography>
-                      )}
-                    </Box>
-                  </ButtonBase>
-                );
-              })}
-            </Box>
+                      {entry.label}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+
+              <CellGrid
+                cells={cells}
+                disabled={busy || limitExhausted}
+                isCellSelectable={isCellSellable}
+                onSelect={(cell) => void handleSell(cell)}
+              />
+            </>
           )}
         </Box>
       </Container>

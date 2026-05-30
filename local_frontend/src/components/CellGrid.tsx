@@ -4,11 +4,17 @@ import { CellCard } from "./CellCard";
 
 interface CellGridProps {
   cells: Cell[];
-  disabled: boolean;
-  onSelect: (cell: Cell) => void;
+  disabled?: boolean;
+  onSelect?: (cell: Cell) => void;
+  isCellSelectable?: (cell: Cell) => boolean;
 }
 
-export function CellGrid({ cells, disabled, onSelect }: CellGridProps) {
+export function CellGrid({
+  cells,
+  disabled = false,
+  onSelect,
+  isCellSelectable,
+}: CellGridProps) {
   return (
     <Box
       sx={{
@@ -22,14 +28,20 @@ export function CellGrid({ cells, disabled, onSelect }: CellGridProps) {
         },
       }}
     >
-      {cells.map((cell) => (
-        <CellCard
-          key={cell.number}
-          cell={cell}
-          disabled={disabled}
-          onSelect={onSelect}
-        />
-      ))}
+      {cells.map((cell) => {
+        const selectable =
+          onSelect !== undefined &&
+          (isCellSelectable === undefined || isCellSelectable(cell));
+
+        return (
+          <CellCard
+            key={cell.number}
+            cell={cell}
+            disabled={disabled}
+            onSelect={selectable ? onSelect : undefined}
+          />
+        );
+      })}
     </Box>
   );
 }

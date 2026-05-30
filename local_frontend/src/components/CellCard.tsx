@@ -11,8 +11,9 @@ import { getCellStatusView } from "./cellStatusView";
 
 interface CellCardProps {
   cell: Cell;
-  disabled: boolean;
-  onSelect: (cell: Cell) => void;
+  disabled?: boolean;
+  onClick?: () => void;
+  onSelect?: (cell: Cell) => void;
 }
 
 /** Feminine lock labels ("ячейка закрыта") shown on the small lock chip. */
@@ -67,7 +68,12 @@ function CardChip({ label, icon: Icon, bg, color, border }: CardChipProps) {
   );
 }
 
-export function CellCard({ cell, disabled, onSelect }: CellCardProps) {
+export function CellCard({
+  cell,
+  disabled = false,
+  onClick,
+  onSelect,
+}: CellCardProps) {
   const view = getCellStatusView(cell);
   const { tone } = view;
   const StatusIcon = view.icon;
@@ -76,34 +82,15 @@ export function CellCard({ cell, disabled, onSelect }: CellCardProps) {
   const hasProduct = !!cell.product_name && cell.product_name.trim() !== "";
   const productText = hasProduct ? cell.product_name : "Ячейка свободна";
 
-  return (
-    <ButtonBase
-      disabled={disabled}
-      onClick={() => onSelect(cell)}
-      focusRipple
-      sx={{
-        display: "block",
-        width: "100%",
-        textAlign: "left",
-        borderRadius: "16px",
-        opacity: disabled ? 0.55 : 1,
-        transition:
-          "transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease",
-        "& .cell-card": { height: "100%" },
-        "@media (hover: hover)": {
-          "&:hover .cell-card": {
-            transform: "translateY(-2px)",
-            boxShadow: "0 10px 22px rgba(15, 50, 70, 0.18)",
-            borderColor: tone.borderActive,
-          },
-        },
-        "&:active .cell-card": {
-          transform: "translateY(-1px)",
-          boxShadow: "0 6px 14px rgba(15, 50, 70, 0.2)",
-          borderColor: tone.borderActive,
-        },
-      }}
-    >
+  const clickable =
+    !disabled && (onClick !== undefined || onSelect !== undefined);
+
+  const handleClick = () => {
+    if (onClick !== undefined) onClick();
+    else if (onSelect !== undefined) onSelect(cell);
+  };
+
+  const cardInner = (
       <Box
         className="cell-card"
         sx={{
@@ -116,7 +103,7 @@ export function CellCard({ cell, disabled, onSelect }: CellCardProps) {
           border: "1px solid",
           borderColor: tone.border,
           boxShadow: "0 4px 12px rgba(15, 50, 70, 0.1)",
-          cursor: "pointer",
+          cursor: clickable ? "pointer" : "default",
           overflow: "hidden",
         }}
       >
@@ -197,6 +184,53 @@ export function CellCard({ cell, disabled, onSelect }: CellCardProps) {
           </Typography>
         </Box>
       </Box>
+  );
+
+  if (!clickable) {
+    return (
+      <Box
+        sx={{
+          display: "block",
+          width: "100%",
+          borderRadius: "16px",
+          opacity: disabled ? 0.55 : 1,
+          "& .cell-card": { height: "100%" },
+        }}
+      >
+        {cardInner}
+      </Box>
+    );
+  }
+
+  return (
+    <ButtonBase
+      disabled={disabled}
+      onClick={handleClick}
+      focusRipple
+      sx={{
+        display: "block",
+        width: "100%",
+        textAlign: "left",
+        borderRadius: "16px",
+        opacity: disabled ? 0.55 : 1,
+        transition:
+          "transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease",
+        "& .cell-card": { height: "100%" },
+        "@media (hover: hover)": {
+          "&:hover .cell-card": {
+            transform: "translateY(-2px)",
+            boxShadow: "0 10px 22px rgba(15, 50, 70, 0.18)",
+            borderColor: tone.borderActive,
+          },
+        },
+        "&:active .cell-card": {
+          transform: "translateY(-1px)",
+          boxShadow: "0 6px 14px rgba(15, 50, 70, 0.2)",
+          borderColor: tone.borderActive,
+        },
+      }}
+    >
+      {cardInner}
     </ButtonBase>
   );
 }
