@@ -29,8 +29,11 @@ type Status = { severity: "info" | "success" | "error"; text: string };
 
 const DEFAULT_STATUS: Status = {
   severity: "info",
-  text: "Нажмите на номер ячейки, чтобы купить",
+  text: "Нажмите на ячейку с товаром, чтобы купить",
 };
+
+const CELL_NOT_SELLABLE_TEXT =
+  "Эта ячейка недоступна для покупки. Выберите заполненную ячейку.";
 
 const BACKEND_UNAVAILABLE =
   "Локальный backend недоступен. Обратитесь к администратору";
@@ -101,6 +104,15 @@ export function StartIssueScreen({
     limit !== null &&
     limit.status !== "NOT_SET" &&
     limit.remaining_amount_kopecks <= 0;
+
+  const handleCellSelect = (cell: Cell) => {
+    if (busy || limitExhausted) return;
+    if (!isCellSellable(cell)) {
+      setStatus({ severity: "error", text: CELL_NOT_SELLABLE_TEXT });
+      return;
+    }
+    void handleSell(cell);
+  };
 
   const handleSell = async (cell: Cell) => {
     if (busy || limitExhausted || !isCellSellable(cell)) return;
@@ -207,8 +219,7 @@ export function StartIssueScreen({
               <CellGrid
                 cells={cells}
                 disabled={busy || limitExhausted}
-                isCellSelectable={isCellSellable}
-                onSelect={(cell) => void handleSell(cell)}
+                onSelect={handleCellSelect}
               />
             </>
           )}

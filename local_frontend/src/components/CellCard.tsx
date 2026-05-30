@@ -82,10 +82,11 @@ export function CellCard({
   const hasProduct = !!cell.product_name && cell.product_name.trim() !== "";
   const productText = hasProduct ? cell.product_name : "Ячейка свободна";
 
-  const clickable =
-    !disabled && (onClick !== undefined || onSelect !== undefined);
+  const hasHandler = onClick !== undefined || onSelect !== undefined;
+  const interactive = hasHandler && !disabled;
 
   const handleClick = () => {
+    if (disabled) return;
     if (onClick !== undefined) onClick();
     else if (onSelect !== undefined) onSelect(cell);
   };
@@ -103,7 +104,7 @@ export function CellCard({
           border: "1px solid",
           borderColor: tone.border,
           boxShadow: "0 4px 12px rgba(15, 50, 70, 0.1)",
-          cursor: clickable ? "pointer" : "default",
+          cursor: interactive ? "pointer" : "default",
           overflow: "hidden",
         }}
       >
@@ -186,7 +187,7 @@ export function CellCard({
       </Box>
   );
 
-  if (!clickable) {
+  if (!hasHandler) {
     return (
       <Box
         sx={{
@@ -206,6 +207,7 @@ export function CellCard({
     <ButtonBase
       disabled={disabled}
       onClick={handleClick}
+      aria-disabled={disabled || undefined}
       focusRipple
       sx={{
         display: "block",
@@ -216,18 +218,20 @@ export function CellCard({
         transition:
           "transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease",
         "& .cell-card": { height: "100%" },
-        "@media (hover: hover)": {
-          "&:hover .cell-card": {
-            transform: "translateY(-2px)",
-            boxShadow: "0 10px 22px rgba(15, 50, 70, 0.18)",
+        ...(!disabled && {
+          "@media (hover: hover)": {
+            "&:hover .cell-card": {
+              transform: "translateY(-2px)",
+              boxShadow: "0 10px 22px rgba(15, 50, 70, 0.18)",
+              borderColor: tone.borderActive,
+            },
+          },
+          "&:active .cell-card": {
+            transform: "translateY(-1px)",
+            boxShadow: "0 6px 14px rgba(15, 50, 70, 0.2)",
             borderColor: tone.borderActive,
           },
-        },
-        "&:active .cell-card": {
-          transform: "translateY(-1px)",
-          boxShadow: "0 6px 14px rgba(15, 50, 70, 0.2)",
-          borderColor: tone.borderActive,
-        },
+        }),
       }}
     >
       {cardInner}

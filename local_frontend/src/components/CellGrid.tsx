@@ -6,14 +6,15 @@ interface CellGridProps {
   cells: Cell[];
   disabled?: boolean;
   onSelect?: (cell: Cell) => void;
-  isCellSelectable?: (cell: Cell) => boolean;
+  /** Per-cell disabled state merged with the grid-level ``disabled`` flag. */
+  isCellDisabled?: (cell: Cell) => boolean;
 }
 
 export function CellGrid({
   cells,
   disabled = false,
   onSelect,
-  isCellSelectable,
+  isCellDisabled,
 }: CellGridProps) {
   return (
     <Box
@@ -28,20 +29,14 @@ export function CellGrid({
         },
       }}
     >
-      {cells.map((cell) => {
-        const selectable =
-          onSelect !== undefined &&
-          (isCellSelectable === undefined || isCellSelectable(cell));
-
-        return (
-          <CellCard
-            key={cell.number}
-            cell={cell}
-            disabled={disabled}
-            onSelect={selectable ? onSelect : undefined}
-          />
-        );
-      })}
+      {cells.map((cell) => (
+        <CellCard
+          key={cell.number}
+          cell={cell}
+          disabled={disabled || (isCellDisabled?.(cell) ?? false)}
+          onSelect={onSelect}
+        />
+      ))}
     </Box>
   );
 }
