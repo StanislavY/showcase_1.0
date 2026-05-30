@@ -12,6 +12,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.domain.cell_status import CellStatus, LockStatus
+
 # Possible values of ``OpenCellResponse.status``.
 #
 # IMPORTANT: today the cell controller protocol used by this project is
@@ -20,11 +22,27 @@ from pydantic import BaseModel, Field
 # expose ``"open"`` / ``"closed"`` here: it would imply confirmation we
 # cannot give. The only honest post-dispatch state is ``"command_sent"``.
 #
-# TODO: Здесь нужно подключить реальное чтение статуса ячейки от
-# контроллера. Когда протокол получит ответную часть, расширить этот
-# Literal значениями вроде "open" / "closed" / "timeout" и пробрасывать
-# их из CellService.
+# TODO: Wire up real cell-status reading from the controller here. Once
+# the protocol gains a response side, extend this Literal with values
+# like "open" / "closed" / "timeout" and propagate them from CellService.
 CellOpenStatus = Literal["command_sent", "dispatch_failed"]
+
+
+class CellResponse(BaseModel):
+    """Postamat cell for ``GET /api/cells`` (bookkeeping state in SQLite)."""
+
+    number: int = Field(..., description="Номер ячейки (1..27)")
+    status: CellStatus = Field(..., description="Статус ячейки в учёте")
+    product_id: str | None = Field(None, description="Идентификатор товара в ячейке")
+    product_name: str | None = Field(None, description="Название товара")
+    product_price: float | None = Field(None, description="Цена товара")
+    lock_status: LockStatus = Field(
+        LockStatus.UNKNOWN, description="Доменный статус замка ячейки"
+    )
+    last_lock_event_at: str | None = Field(
+        None, description="Время последнего события замка (ISO 8601, UTC)"
+    )
+    updated_at: str = Field(..., description="Время последнего изменения (ISO 8601, UTC)")
 
 
 class OpenCellResponse(BaseModel):

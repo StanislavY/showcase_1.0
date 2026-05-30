@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 
 from app.schemas.cell_schemas import (
+    CellResponse,
     OpenCellResponse,
     OpenCellValidationErrorResponse,
 )
@@ -23,6 +24,18 @@ from app.services.cell_service import (
 )
 
 router = APIRouter(prefix="/cells", tags=["cells"])
+
+
+@router.get(
+    "",
+    response_model=list[CellResponse],
+    summary="Список всех ячеек постамата",
+)
+def list_cells_endpoint(
+    service: CellService = Depends(get_cell_service),
+) -> list[CellResponse]:
+    """Return the 27 cells with their bookkeeping state from SQLite."""
+    return service.list_cells()
 
 
 @router.post(

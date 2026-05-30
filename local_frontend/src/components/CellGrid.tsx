@@ -4,31 +4,29 @@ import { CellCard } from "./CellCard";
 
 interface CellGridProps {
   cells: Cell[];
-  openingCellId: number | null;
-  onSelect: (cellId: number) => void;
+  disabled: boolean;
+  onSelect: (cell: Cell) => void;
 }
 
-export function CellGrid({ cells, openingCellId, onSelect }: CellGridProps) {
-  const isBusy = openingCellId !== null;
+export function CellGrid({ cells, disabled, onSelect }: CellGridProps) {
   return (
     <Box
       sx={{
         display: "grid",
         width: "100%",
-        gap: { xs: 1.5, sm: 2, md: 2.5 },
+        gap: { xs: 1.5, sm: 2 },
         gridTemplateColumns: {
-          xs: "repeat(3, 1fr)",
-          sm: "repeat(5, 1fr)",
-          md: "repeat(9, 1fr)",
+          xs: "repeat(2, 1fr)",
+          sm: "repeat(4, 1fr)",
+          md: "repeat(6, 1fr)",
         },
       }}
     >
       {cells.map((cell) => (
         <CellCard
-          key={cell.id}
-          cellId={cell.id}
-          disabled={isBusy}
-          isLoading={openingCellId === cell.id}
+          key={cell.number}
+          cell={cell}
+          disabled={disabled}
           onSelect={onSelect}
         />
       ))}

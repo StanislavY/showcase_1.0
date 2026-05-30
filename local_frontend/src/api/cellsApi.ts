@@ -1,20 +1,13 @@
 import type { Cell, OpenCellResponse } from "../types/cell";
-import { createCells } from "../types/cell";
+import { apiFetch } from "./client";
 
-const API_BASE_URL = "http://127.0.0.1:8000/api";
-
-export async function fetchCells(): Promise<Cell[]> {
-  return createCells();
+export function fetchCells(): Promise<Cell[]> {
+  return apiFetch<Cell[]>("/cells", { method: "GET" });
 }
 
-export async function openCell(cellNumber: number): Promise<OpenCellResponse> {
-  const response = await fetch(`${API_BASE_URL}/cells/${cellNumber}/open`, {
+/** Dispatch an "open" command for a single cell (write-only on the backend). */
+export function openCell(cellNumber: number): Promise<OpenCellResponse> {
+  return apiFetch<OpenCellResponse>(`/cells/${cellNumber}/open`, {
     method: "POST",
   });
-
-  if (!response.ok && response.status !== 400 && response.status !== 503) {
-    throw new Error("Backend unavailable");
-  }
-
-  return response.json() as Promise<OpenCellResponse>;
 }

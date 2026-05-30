@@ -36,7 +36,34 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from app.domain.cell_status import LockStatus
+
 logger = logging.getLogger(__name__)
+
+
+def map_hardware_lock_status(raw: Any) -> LockStatus:
+    """Map a hardware lock status to the domain ``LockStatus``.
+
+    A careful adapter: the controller may send different formats
+    (strings, numbers, boolean codes). Here we do NOT break the existing
+    protocol, we only normalize whatever arrived. Unknown values become
+    ``UNKNOWN`` so the business logic does not crash.
+    """
+    if raw is None:
+        return LockStatus.UNKNOWN
+    if isinstance(raw, LockStatus):
+        return raw
+    text = str(raw).strip().upper()
+    open_codes = {"OPEN", "OPENED", "1", "TRUE", "O"}
+    closed_codes = {"CLOSED", "CLOSE", "0", "FALSE", "C"}
+    error_codes = {"ERROR", "ERR", "FAULT", "-1", "E"}
+    if text in open_codes:
+        return LockStatus.OPEN
+    if text in closed_codes:
+        return LockStatus.CLOSED
+    if text in error_codes:
+        return LockStatus.ERROR
+    return LockStatus.UNKNOWN
 
 
 def _load_legacy_module() -> Any | None:
@@ -77,9 +104,9 @@ class HardwareClient:
     one would require fabricating commands the real controller does
     not support.
 
-    TODO: Здесь нужно подключить реальное чтение статуса ячейки от
-    контроллера, как только согласуем ответную часть протокола
-    Arduino (формат сообщений, признак конкретной ячейки, тайминги).
+    TODO: Wire up real cell-status reading from the controller here, as
+    soon as we agree on the response side of the Arduino protocol
+    (message format, per-cell identifier, timings).
     """
 
     def __init__(self) -> None:
@@ -109,15 +136,16 @@ class HardwareClient:
         False on any error. We do NOT verify the physical state of
         the cell — only the fact that the command left the backend.
 
-        TODO: Здесь нужно подключить реальное чтение статуса ячейки от
-        контроллера. Сейчас в legacy-слое
-        ``postamat_device/libs/serial_ports_mng.py`` метод
-        ``Arduino.open_cell`` только ``write(...)`` в serial-порт и не
-        читает ответ. Когда контроллер начнёт отдавать состояние
-        ("opened" / "closed" / "error"), здесь следует добавить
-        чтение этой части протокола и вернуть наверх не bool, а
-        доменный статус — либо отдельным методом ``get_cell_status``.
-        Делать это до подтверждения формата ответа от железа нельзя.
+        TODO: Wire up real cell-status reading from the controller here.
+        Currently, in the legacy layer
+        ``postamat_device/libs/serial_ports_mng.py`` the method
+        ``Arduino.open_cell`` only does ``write(...)`` to the serial port
+        and does not read a response. Once the controller starts
+        reporting state ("opened" / "closed" / "error"), this part of the
+        protocol should be read here and the method should return a
+        domain status instead of a bool — or expose a separate
+        ``get_cell_status`` method. This must not be done before the
+        hardware response format is confirmed.
         """
         arduino = self._arduino
         if arduino is None:
@@ -166,17 +194,53 @@ class HardwareClient:
             "succeeded": succeeded,
         }
 
+    def get_lock_status(self, cell_number: int) -> LockStatus:
+        """Return the domain lock status reported by the controller.
+
+        TODO: Wire up real lock-status reading from the controller here.
+        The current legacy protocol (``Arduino.open_cell`` in
+        ``postamat_device``) is write-only and does not report the cell
+        state, so the honest answer right now is ``UNKNOWN``. Once the
+        controller starts sending a status, read it here and pass it
+        through :func:`map_hardware_lock_status` without changing the
+        method signature.
+        """
+        arduino = self._arduino
+        if arduino is None:
+            return LockStatus.UNKNOWN
+        getter = getattr(arduino, "get_lock_status", None)
+        if getter is None:
+            # The controller cannot report a status yet — do not make one up.
+            return LockStatus.UNKNOWN
+        try:
+            return map_hardware_lock_status(getter(str(cell_number)))
+        except Exception as exc:  # noqa: BLE001
+            logger.exception(
+                "get_lock_status(%s) failed in legacy layer: %s",
+                cell_number,
+                exc,
+            )
+            return LockStatus.ERROR
+
 
 class MockHardwareClient:
     """Drop-in replacement for ``HardwareClient`` without real hardware.
 
     Useful for development, tests, and CI where no USB controller is
-    attached. Behaviorally pretends every command was dispatched
-    successfully and logs the call at INFO level.
+    attached. Unlike the real client it keeps an in-memory model of each
+    cell's lock so the courier workflow can be exercised end-to-end:
+
+    * ``open_cell`` moves the lock to ``OPEN``;
+    * ``get_lock_status`` returns the current simulated state;
+    * ``simulate_close`` simulates a physical closing (``CLOSED``).
+
+    The state must live across HTTP requests, so the application uses a
+    single (singleton) instance — see :func:`get_hardware_client`.
     """
 
     def __init__(self) -> None:
         self.opened_cells: list[int] = []
+        self._lock_status: dict[int, LockStatus] = {}
 
     def is_available(self) -> bool:
         return True
@@ -184,6 +248,7 @@ class MockHardwareClient:
     def open_cell(self, cell_number: int) -> bool:
         logger.info("[MockHardwareClient] open_cell(%s)", cell_number)
         self.opened_cells.append(cell_number)
+        self._lock_status[cell_number] = LockStatus.OPEN
         return True
 
     def open_cells(self, cell_numbers: list[int]) -> dict:
@@ -196,18 +261,38 @@ class MockHardwareClient:
             "succeeded": succeeded,
         }
 
+    def get_lock_status(self, cell_number: int) -> LockStatus:
+        """Return the simulated lock status (defaults to ``UNKNOWN``)."""
+        return self._lock_status.get(cell_number, LockStatus.UNKNOWN)
+
+    def simulate_close(self, cell_number: int) -> LockStatus:
+        """Simulate a physical cell closing (dev/mock only)."""
+        logger.info("[MockHardwareClient] simulate_close(%s)", cell_number)
+        self._lock_status[cell_number] = LockStatus.CLOSED
+        return LockStatus.CLOSED
+
+
+# A single client instance per process. This is critical for mock mode:
+# the lock state model must persist across requests.
+_client_singleton: HardwareClient | MockHardwareClient | None = None
+
 
 def get_hardware_client() -> HardwareClient | MockHardwareClient:
     """Factory: pick a client based on ``config.use_mock_hardware``.
 
-    Keeping this here (instead of in ``services``) so the rest of the
-    application has a single, stable entry point into the hardware
-    abstraction.
+    Returns the same instance for the whole process lifetime so that
+    internal state (e.g. the mock's simulated locks) is not reset on
+    every request.
     """
     # Imported here to avoid a circular import with ``app.core.config``
     # if config ever grows to import hardware metadata.
     from app.core.config import config
 
-    if config.use_mock_hardware:
-        return MockHardwareClient()
-    return HardwareClient()
+    global _client_singleton
+    if _client_singleton is None:
+        _client_singleton = (
+            MockHardwareClient()
+            if config.use_mock_hardware
+            else HardwareClient()
+        )
+    return _client_singleton

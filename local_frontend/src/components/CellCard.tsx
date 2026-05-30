@@ -1,82 +1,86 @@
 import Card from "@mui/material/Card";
 import CardActionArea from "@mui/material/CardActionArea";
-import CircularProgress from "@mui/material/CircularProgress";
+import Chip from "@mui/material/Chip";
+import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import Box from "@mui/material/Box";
+import type { Cell } from "../types/cell";
+import {
+  CELL_STATUS_COLOR,
+  CELL_STATUS_LABEL,
+  LOCK_STATUS_COLOR,
+  LOCK_STATUS_LABEL,
+} from "../labels";
 
 interface CellCardProps {
-  cellId: number;
+  cell: Cell;
   disabled: boolean;
-  isLoading: boolean;
-  onSelect: (cellId: number) => void;
+  onSelect: (cell: Cell) => void;
 }
 
-export function CellCard({
-  cellId,
-  disabled,
-  isLoading,
-  onSelect,
-}: CellCardProps) {
+export function CellCard({ cell, disabled, onSelect }: CellCardProps) {
   return (
     <Card
-      elevation={4}
+      elevation={3}
       sx={{
         borderRadius: 3,
-        height: "100%",
-        opacity: disabled && !isLoading ? 0.55 : 1,
-        transition: "transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease",
-        "&:hover": disabled
-          ? undefined
-          : {
-              transform: "translateY(-2px)",
-              boxShadow: 8,
-            },
+        aspectRatio: "1 / 1",
+        opacity: disabled ? 0.5 : 1,
       }}
     >
       <CardActionArea
         disabled={disabled}
-        onClick={() => onSelect(cellId)}
+        onClick={() => onSelect(cell)}
         sx={{
           height: "100%",
+          p: 1,
           display: "flex",
+          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          minHeight: { xs: 96, sm: 120, md: 140 },
-          background: isLoading
-            ? "linear-gradient(135deg, rgba(25,118,210,0.18) 0%, rgba(25,118,210,0.08) 100%)"
-            : "linear-gradient(135deg, rgba(25,118,210,0.10) 0%, rgba(25,118,210,0.02) 100%)",
+          gap: 0.5,
+          textAlign: "center",
         }}
       >
-        <Box
+        <Typography
+          variant="caption"
+          sx={{ color: "text.secondary", lineHeight: 1, letterSpacing: 1 }}
+        >
+          ЯЧЕЙКА
+        </Typography>
+        <Typography
+          variant="h3"
+          sx={{ fontWeight: 700, lineHeight: 1, color: "primary.main" }}
+        >
+          {cell.number}
+        </Typography>
+
+        <Typography
+          variant="body2"
           sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 0.5,
+            color: "text.secondary",
+            maxWidth: "100%",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
           }}
         >
-          <Typography
-            variant="overline"
-            sx={{ color: "text.secondary", lineHeight: 1 }}
-          >
-            ячейка
-          </Typography>
-          {isLoading ? (
-            <CircularProgress size={40} />
-          ) : (
-            <Typography
-              variant="h3"
-              sx={{
-                fontWeight: 700,
-                color: "primary.main",
-                lineHeight: 1,
-                userSelect: "none",
-              }}
-            >
-              {cellId}
-            </Typography>
-          )}
-        </Box>
+          {cell.product_name ?? "—"}
+        </Typography>
+
+        <Stack spacing={0.5} alignItems="center" sx={{ width: "100%" }}>
+          <Chip
+            size="small"
+            label={CELL_STATUS_LABEL[cell.status]}
+            color={CELL_STATUS_COLOR[cell.status]}
+            variant="filled"
+          />
+          <Chip
+            size="small"
+            label={LOCK_STATUS_LABEL[cell.lock_status]}
+            color={LOCK_STATUS_COLOR[cell.lock_status]}
+            variant="outlined"
+          />
+        </Stack>
       </CardActionArea>
     </Card>
   );

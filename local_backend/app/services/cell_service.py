@@ -17,7 +17,10 @@ from __future__ import annotations
 import logging
 from typing import Protocol
 
+from app.domain.layout import MAX_CELL_NUMBER, MIN_CELL_NUMBER
 from app.hardware.hardware_client import get_hardware_client
+from app.repositories.cell_repository import CellRecord, CellRepository
+from app.schemas.cell_schemas import CellResponse
 
 logger = logging.getLogger(__name__)
 
@@ -43,14 +46,23 @@ class HardwareUnavailableError(RuntimeError):
 
 
 class CellService:
-    """Business logic around opening postamat cells."""
+    """Cell business logic: opening via hardware and bookkeeping in SQLite."""
 
-    # Postamat layout: cells are numbered 1..27 inclusive.
-    MIN_CELL_NUMBER: int = 1
-    MAX_CELL_NUMBER: int = 27
+    MIN_CELL_NUMBER: int = MIN_CELL_NUMBER
+    MAX_CELL_NUMBER: int = MAX_CELL_NUMBER
 
-    def __init__(self, hardware: _HardwarePort) -> None:
+    def __init__(
+        self,
+        hardware: _HardwarePort,
+        cell_repository: CellRepository | None = None,
+    ) -> None:
         self._hardware = hardware
+        self._cells = cell_repository or CellRepository()
+
+    def list_cells(self) -> list[CellResponse]:
+        """List all cells from the local DB (bookkeeping state)."""
+        records = self._cells.list_all()
+        return [_record_to_response(record) for record in records]
 
     def open_cell(self, cell_number: int) -> None:
         """Validate the cell number and send the open command."""
@@ -78,6 +90,19 @@ class CellService:
                 f"Номер ячейки должен быть от "
                 f"{self.MIN_CELL_NUMBER} до {self.MAX_CELL_NUMBER}"
             )
+
+
+def _record_to_response(record: CellRecord) -> CellResponse:
+    return CellResponse(
+        number=record.number,
+        status=record.status.value,
+        product_id=record.product_id,
+        product_name=record.product_name,
+        product_price=record.product_price,
+        lock_status=record.lock_status.value,
+        last_lock_event_at=record.last_lock_event_at,
+        updated_at=record.updated_at,
+    )
 
 
 def get_cell_service() -> CellService:

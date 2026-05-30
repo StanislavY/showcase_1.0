@@ -1,13 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
-import Container from "@mui/material/Container";
-import Typography from "@mui/material/Typography";
+import CircularProgress from "@mui/material/CircularProgress";
 import CssBaseline from "@mui/material/CssBaseline";
+import Typography from "@mui/material/Typography";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
-import { openCell } from "./api/cellsApi";
-import { CellGrid } from "./components/CellGrid";
-import { StatusMessage } from "./components/StatusMessage";
-import { createCells } from "./types/cell";
+import { checkCourierSession } from "./api/authApi";
+import { CourierLoginDialog } from "./components/CourierLoginDialog";
+import { CourierScreen } from "./components/CourierScreen";
+import { StartScreen } from "./components/StartScreen";
 
 const theme = createTheme({
   palette: {
@@ -16,97 +16,90 @@ const theme = createTheme({
     background: { default: "#f3f6fb" },
   },
   shape: { borderRadius: 12 },
-  typography: {
-    fontFamily:
-      "Roboto, 'Segoe UI', Arial, system-ui, -apple-system, sans-serif",
-  },
 });
 
-export default function App() {
-  const cells = useMemo(() => createCells(), []);
-  const [message, setMessage] = useState<string>("");
-  const [openingCellId, setOpeningCellId] = useState<number | null>(null);
+const SESSION_TOKEN_KEY = "courier_session_token";
 
-  const handleSelect = async (cellId: number) => {
-    if (openingCellId !== null) {
+type AppMode = "start" | "courier";
+
+export default function App() {
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [mode, setMode] = useState<AppMode>("start");
+  const [courierId, setCourierId] = useState<string | null>(null);
+  const [loginOpen, setLoginOpen] = useState(false);
+
+  // On startup, restore a courier session if the stored token is still valid.
+  useEffect(() => {
+    const token = sessionStorage.getItem(SESSION_TOKEN_KEY);
+    if (!token) {
+      setCheckingSession(false);
       return;
     }
-
-    setOpeningCellId(cellId);
-    setMessage(`Открываем ячейку №${cellId}...`);
-
-    try {
-      const result = await openCell(cellId);
-
-      if (result.success) {
-        setMessage(`Ячейка №${cellId} открыта, заберите товар`);
+    let cancelled = false;
+    void (async () => {
+      const valid = await checkCourierSession(token);
+      if (cancelled) return;
+      if (valid) {
+        // The courier id is not persisted (only the token lives in
+        // sessionStorage); the backend identifies the courier from the token.
+        setCourierId("");
+        setMode("courier");
       } else {
-        setMessage(
-          `Не удалось открыть ячейку №${cellId}. Попробуйте нажать кнопку заново или обратитесь в поддержку`,
-        );
+        sessionStorage.removeItem(SESSION_TOKEN_KEY);
+        setMode("start");
       }
-    } catch {
-      setMessage("Локальный backend недоступен. Обратитесь в поддержку");
-    } finally {
-      setOpeningCellId(null);
-    }
+      setCheckingSession(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleLoginSuccess = (token: string, id: string) => {
+    sessionStorage.setItem(SESSION_TOKEN_KEY, token);
+    setCourierId(id);
+    setMode("courier");
+    setLoginOpen(false);
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem(SESSION_TOKEN_KEY);
+    setCourierId(null);
+    setMode("start");
   };
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box
-        sx={{
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          bgcolor: "background.default",
-          touchAction: "manipulation",
-        }}
-      >
+      {checkingSession ? (
         <Box
-          component="header"
           sx={{
-            py: { xs: 2, md: 3 },
-            textAlign: "center",
-            bgcolor: "primary.main",
-            color: "primary.contrastText",
-            boxShadow: 2,
-          }}
-        >
-          <Typography variant="h3" sx={{ fontWeight: 600 }}>
-            Выберите ячейку
-          </Typography>
-        </Box>
-
-        <Container
-          maxWidth="xl"
-          sx={{
-            flexGrow: 1,
+            minHeight: "100vh",
             display: "flex",
             flexDirection: "column",
-            alignItems: "stretch",
+            alignItems: "center",
             justifyContent: "center",
-            py: { xs: 3, md: 5 },
+            gap: 2,
+            bgcolor: "background.default",
           }}
         >
-          <CellGrid
-            cells={cells}
-            openingCellId={openingCellId}
-            onSelect={handleSelect}
-          />
-        </Container>
-
-        <Box
-          component="footer"
-          sx={{
-            px: { xs: 2, md: 4 },
-            pb: { xs: 2, md: 3 },
-          }}
-        >
-          <StatusMessage message={message} />
+          <CircularProgress />
+          <Typography variant="h6" color="text.secondary">
+            Проверяем сессию...
+          </Typography>
         </Box>
-      </Box>
+      ) : mode === "courier" ? (
+        <CourierScreen courierId={courierId ?? ""} onLogout={handleLogout} />
+      ) : (
+        <>
+          <StartScreen onCourierMode={() => setLoginOpen(true)} />
+          <CourierLoginDialog
+            open={loginOpen}
+            onClose={() => setLoginOpen(false)}
+            onSuccess={handleLoginSuccess}
+          />
+        </>
+      )}
     </ThemeProvider>
   );
 }
