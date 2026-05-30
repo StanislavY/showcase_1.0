@@ -22,6 +22,15 @@ import {
 import { ApiError } from "../api/client";
 import { CellGrid } from "./CellGrid";
 import { CELL_STATUS_LEGEND, CELL_STATUS_TONES } from "./cellStatusView";
+import {
+  glassButtonSx,
+  glassPanelSx,
+  kioskHeaderSx,
+  kioskRootSx,
+  kioskSubtitleSx,
+  kioskTitleSx,
+  KIOSK_TEXT,
+} from "./kioskScreenStyles";
 import { OperationPanel } from "./OperationPanel";
 import { StartOperationDialog } from "./StartOperationDialog";
 import type { Cell } from "../types/cell";
@@ -186,38 +195,14 @@ export function CourierScreen({ courierId, onLogout }: CourierScreenProps) {
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        touchAction: "manipulation",
-        overflowX: "hidden",
-        backgroundImage: 'url("/courier-bg.png")',
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-        backgroundAttachment: "fixed",
-      }}
-    >
-      <Box
-        component="header"
-        sx={{
-          py: { xs: 1.75, md: 2.25 },
-          px: { xs: 2, md: 4 },
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 2,
-        }}
-      >
+    <Box sx={kioskRootSx}>
+      <Box component="header" sx={kioskHeaderSx}>
         <Box sx={{ minWidth: 0 }}>
-          <Typography
-            variant="h4"
-            sx={{ fontWeight: 700, color: "#1c2f42", letterSpacing: "-0.01em" }}
-          >
+          <Typography variant="h4" sx={kioskTitleSx}>
             Экран курьера — постамат
           </Typography>
           {courierId !== "" && (
-            <Typography variant="body2" sx={{ color: "rgba(28, 47, 66, 0.6)" }}>
+            <Typography variant="body2" sx={kioskSubtitleSx}>
               Курьер: {courierId}
             </Typography>
           )}
@@ -228,23 +213,7 @@ export function CourierScreen({ courierId, onLogout }: CourierScreenProps) {
           onClick={onLogout}
           disabled={busy}
           disableElevation
-          sx={{
-            flexShrink: 0,
-            py: 1.25,
-            px: 2.5,
-            fontSize: "1rem",
-            fontWeight: 600,
-            textTransform: "none",
-            color: "#1976d2",
-            bgcolor: "rgba(255, 255, 255, 0.92)",
-            borderRadius: "16px",
-            border: "1px solid rgba(180, 205, 200, 0.5)",
-            boxShadow: "0 8px 20px rgba(26, 47, 66, 0.1)",
-            "&:hover": {
-              bgcolor: "#ffffff",
-              boxShadow: "0 10px 24px rgba(26, 47, 66, 0.14)",
-            },
-          }}
+          sx={glassButtonSx}
         >
           Выйти из режима курьера
         </Button>
@@ -276,16 +245,7 @@ export function CourierScreen({ courierId, onLogout }: CourierScreenProps) {
             onCancel={handleCancel}
           />
         ) : (
-          <Box
-            sx={{
-              p: { xs: 2, md: 2.75 },
-              borderRadius: "24px",
-              bgcolor: "rgba(255, 255, 255, 0.82)",
-              border: "1px solid rgba(180, 205, 200, 0.45)",
-              boxShadow: "0 16px 40px rgba(26, 47, 66, 0.08)",
-              backdropFilter: "blur(8px)",
-            }}
-          >
+          <Box sx={glassPanelSx}>
             <Box
               sx={{
                 mb: 2,
@@ -310,7 +270,7 @@ export function CourierScreen({ courierId, onLogout }: CourierScreenProps) {
                 sx={{
                   textTransform: "none",
                   fontWeight: 600,
-                  color: "#1976d2",
+                  color: KIOSK_TEXT,
                   bgcolor: "rgba(255, 255, 255, 0.9)",
                   borderRadius: "14px",
                   px: 2,

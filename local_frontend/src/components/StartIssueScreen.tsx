@@ -2,8 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Card from "@mui/material/Card";
-import CardActionArea from "@mui/material/CardActionArea";
+import ButtonBase from "@mui/material/ButtonBase";
 import CircularProgress from "@mui/material/CircularProgress";
 import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
@@ -13,7 +12,12 @@ import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import { fetchCells } from "../api/cellsApi";
 import { fetchSalesLimit, sellFromCell } from "../api/salesApi";
 import { ApiError } from "../api/client";
-import { kopecksToRublesText } from "../utils/money";
+import { getCellStatusView } from "./cellStatusView";
+import {
+  glassButtonSx,
+  glassPanelSx,
+  kioskRootSx,
+} from "./kioskScreenStyles";
 import type { Cell } from "../types/cell";
 import type { SalesLimitSummary } from "../types/sales";
 
@@ -26,7 +30,7 @@ type Status = { severity: "info" | "success" | "error"; text: string };
 
 const DEFAULT_STATUS: Status = {
   severity: "info",
-  text: "Выберите ячейку с товаром",
+  text: "Нажмите на номер ячейки, чтобы купить",
 };
 
 const BACKEND_UNAVAILABLE =
@@ -128,195 +132,189 @@ export function StartIssueScreen({
 
   return (
     <Box
-      sx={{
-        minHeight: "100vh",
-        bgcolor: "background.default",
-        touchAction: "manipulation",
-        pb: 14,
-      }}
+      sx={[
+        kioskRootSx,
+        { minHeight: "100vh", display: "flex", flexDirection: "column" },
+      ]}
     >
-      <Box
-        component="header"
+      <Container
+        maxWidth="xl"
         sx={{
-          py: { xs: 2, md: 3 },
-          px: { xs: 2, md: 3 },
-          textAlign: "center",
-          bgcolor: "primary.main",
-          color: "primary.contrastText",
-          boxShadow: 2,
+          flex: 1,
+          pt: { xs: 1, md: 1.5 },
+          pb: { xs: 2, md: 3 },
         }}
       >
-        <Typography variant="h4" sx={{ fontWeight: 600 }}>
-          Постамат
-        </Typography>
-        <Typography variant="subtitle1" sx={{ opacity: 0.9 }}>
-          Нажмите на ячейку с товаром, чтобы забрать заказ
-        </Typography>
-        {limit !== null && limit.status !== "NOT_SET" && (
-          <Typography variant="h6" sx={{ mt: 0.5, fontWeight: 600 }}>
-            Остаток лимита:{" "}
-            {kopecksToRublesText(limit.remaining_amount_kopecks)}
-          </Typography>
-        )}
-      </Box>
-
-      <Container maxWidth="xl" sx={{ py: { xs: 2, md: 4 } }}>
-        <Alert
-          severity={limitExhausted ? "error" : status.severity}
-          sx={{ mb: 2, fontSize: "1.1rem" }}
-        >
-          {limitExhausted ? LIMIT_EXHAUSTED_TEXT : status.text}
-        </Alert>
-
-        {loadError !== null && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {loadError}
-          </Alert>
-        )}
-
-        {loading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
-            <CircularProgress />
-          </Box>
-        ) : (
-          <Box
-            sx={{
-              display: "grid",
-              width: "100%",
-              gap: { xs: 1.5, sm: 2 },
-              gridTemplateColumns: {
-                xs: "repeat(3, 1fr)",
-                sm: "repeat(5, 1fr)",
-                md: "repeat(6, 1fr)",
-              },
-            }}
+        <Box sx={[glassPanelSx, { bgcolor: "rgba(255, 255, 255, 0.5)" }]}>
+          <Alert
+            severity={limitExhausted ? "error" : status.severity}
+            sx={{ mb: 2, fontSize: "1.1rem" }}
           >
-            {cells.map((cell) => {
-              const hasProduct =
-                cell.status === "LOADED" &&
-                cell.product_name !== null &&
-                cell.product_price !== null;
-              return (
-                <Card
-                  key={cell.number}
-                  elevation={3}
-                  sx={{
-                    borderRadius: 3,
-                    aspectRatio: "1 / 1",
-                    opacity: busy || limitExhausted ? 0.5 : 1,
-                  }}
-                >
-                  <CardActionArea
+            {limitExhausted ? LIMIT_EXHAUSTED_TEXT : status.text}
+          </Alert>
+
+          {loadError !== null && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {loadError}
+            </Alert>
+          )}
+
+          {loading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Box
+              sx={{
+                display: "grid",
+                width: "100%",
+                gap: { xs: 1.5, sm: 2 },
+                gridTemplateColumns: {
+                  xs: "repeat(3, 1fr)",
+                  sm: "repeat(5, 1fr)",
+                  md: "repeat(6, 1fr)",
+                },
+              }}
+            >
+              {cells.map((cell) => {
+                const hasProduct =
+                  cell.status === "LOADED" &&
+                  cell.product_name !== null &&
+                  cell.product_price !== null;
+                const { tone } = getCellStatusView(cell);
+                return (
+                  <ButtonBase
+                    key={cell.number}
                     disabled={busy || limitExhausted}
                     onClick={() => void handleSell(cell)}
+                    focusRipple
                     sx={{
-                      height: "100%",
-                      p: 1,
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 0.5,
-                      textAlign: "center",
+                      display: "block",
+                      width: "100%",
+                      borderRadius: "16px",
+                      opacity: busy || limitExhausted ? 0.5 : 1,
+                      transition:
+                        "transform 0.15s ease, box-shadow 0.15s ease",
+                      "& .issue-cell": { height: "100%" },
+                      "@media (hover: hover)": {
+                        "&:hover .issue-cell": {
+                          transform: "translateY(-2px)",
+                          boxShadow: "0 10px 22px rgba(15, 50, 70, 0.18)",
+                        },
+                      },
+                      "&:active .issue-cell": {
+                        transform: "translateY(-1px)",
+                      },
                     }}
                   >
-                    <Typography
-                      variant="caption"
+                    <Box
+                      className="issue-cell"
                       sx={{
-                        color: "text.secondary",
-                        lineHeight: 1,
-                        letterSpacing: 1,
+                        aspectRatio: "1 / 1",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 0.5,
+                        p: 1,
+                        textAlign: "center",
+                        borderRadius: "16px",
+                        bgcolor: tone.bg,
+                        border: "1px solid",
+                        borderColor: tone.border,
+                        boxShadow: "0 4px 12px rgba(15, 50, 70, 0.1)",
+                        overflow: "hidden",
                       }}
                     >
-                      ЯЧЕЙКА
-                    </Typography>
-                    <Typography
-                      variant="h3"
-                      sx={{
-                        fontWeight: 700,
-                        lineHeight: 1,
-                        color: "primary.main",
-                      }}
-                    >
-                      {cell.number}
-                    </Typography>
-                    {hasProduct ? (
-                      <Stack spacing={0.25} sx={{ width: "100%" }}>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: tone.chipColor,
+                          lineHeight: 1,
+                          letterSpacing: 1,
+                          fontWeight: 700,
+                        }}
+                      >
+                        ЯЧЕЙКА
+                      </Typography>
+                      <Typography
+                        variant="h3"
+                        sx={{
+                          fontWeight: 800,
+                          lineHeight: 1,
+                          color: tone.numberColor,
+                        }}
+                      >
+                        {cell.number}
+                      </Typography>
+                      {hasProduct ? (
+                        <Stack spacing={0.25} sx={{ width: "100%" }}>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontWeight: 700,
+                              color: "rgba(28, 42, 54, 0.92)",
+                              maxWidth: "100%",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {cell.product_name}
+                          </Typography>
+                          <Typography
+                            variant="body1"
+                            sx={{ fontWeight: 800, color: tone.numberColor }}
+                          >
+                            {formatPrice(cell.product_price as number)}
+                          </Typography>
+                        </Stack>
+                      ) : (
                         <Typography
                           variant="body2"
-                          sx={{
-                            fontWeight: 600,
-                            maxWidth: "100%",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
+                          sx={{ color: tone.chipColor, fontWeight: 600 }}
                         >
-                          {cell.product_name}
+                          Пусто
                         </Typography>
-                        <Typography
-                          variant="body1"
-                          sx={{ fontWeight: 700, color: "success.main" }}
-                        >
-                          {formatPrice(cell.product_price as number)}
-                        </Typography>
-                      </Stack>
-                    ) : (
-                      <Typography
-                        variant="body2"
-                        sx={{ color: "text.disabled", fontWeight: 600 }}
-                      >
-                        Пусто
-                      </Typography>
-                    )}
-                  </CardActionArea>
-                </Card>
-              );
-            })}
-          </Box>
-        )}
+                      )}
+                    </Box>
+                  </ButtonBase>
+                );
+              })}
+            </Box>
+          )}
+        </Box>
       </Container>
 
       <Box
+        component="footer"
         sx={{
-          position: "fixed",
-          right: 24,
-          bottom: 24,
-          zIndex: 1000,
+          flexShrink: 0,
+          px: { xs: 2, md: 3 },
+          py: 2,
           display: "flex",
           flexDirection: "column",
           gap: 1.5,
           alignItems: "stretch",
+          maxWidth: 360,
+          ml: "auto",
+          mr: { xs: 2, md: 3 },
+          mb: { xs: 2, md: 3 },
         }}
       >
         <Button
-          variant="outlined"
-          color="primary"
           startIcon={<AdminPanelSettingsIcon />}
           onClick={onAdminMode}
-          sx={{
-            py: 1.75,
-            px: 3,
-            fontSize: "1.05rem",
-            borderRadius: 999,
-            boxShadow: 4,
-            bgcolor: "background.paper",
-          }}
+          disableElevation
+          sx={glassButtonSx}
         >
           Панель управления
         </Button>
         <Button
-          variant="contained"
-          color="secondary"
           startIcon={<EngineeringIcon />}
           onClick={onCourierMode}
-          sx={{
-            py: 1.75,
-            px: 3,
-            fontSize: "1.05rem",
-            borderRadius: 999,
-            boxShadow: 6,
-          }}
+          disableElevation
+          sx={glassButtonSx}
         >
           Режим курьера
         </Button>

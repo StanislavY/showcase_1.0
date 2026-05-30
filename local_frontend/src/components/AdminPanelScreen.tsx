@@ -2,8 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
 import CircularProgress from "@mui/material/CircularProgress";
 import Container from "@mui/material/Container";
 import Divider from "@mui/material/Divider";
@@ -15,6 +13,15 @@ import BackspaceOutlinedIcon from "@mui/icons-material/BackspaceOutlined";
 import { ApiError } from "../api/client";
 import { fetchSalesLimit, setSalesLimit } from "../api/salesApi";
 import { kopecksToRublesText, rublesInputToKopecks } from "../utils/money";
+import {
+  glassButtonSx,
+  glassCardSx,
+  glassPanelSx,
+  kioskHeaderSx,
+  kioskRootSx,
+  kioskTitleSx,
+  KIOSK_TEXT,
+} from "./kioskScreenStyles";
 import type { SalesLimitSummary } from "../types/sales";
 
 interface AdminPanelScreenProps {
@@ -113,61 +120,28 @@ export function AdminPanelScreen({
       : `${Number.parseInt(rublesInput, 10).toLocaleString("ru-RU")} ₽`;
 
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        bgcolor: "background.default",
-        touchAction: "manipulation",
-      }}
-    >
-      <Box
-        component="header"
-        sx={{
-          py: { xs: 2, md: 3 },
-          px: { xs: 2, md: 3 },
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 2,
-          bgcolor: "primary.main",
-          color: "primary.contrastText",
-          boxShadow: 2,
-        }}
-      >
+    <Box sx={kioskRootSx}>
+      <Box component="header" sx={kioskHeaderSx}>
         <Button
           variant="contained"
-          color="inherit"
           startIcon={<ArrowBackIcon />}
           onClick={onBack}
           disabled={busy}
-          sx={{
-            flexShrink: 0,
-            py: 1.25,
-            px: 2.5,
-            fontSize: "1rem",
-            color: "primary.main",
-            bgcolor: "primary.contrastText",
-          }}
+          disableElevation
+          sx={glassButtonSx}
         >
           Назад
         </Button>
-        <Typography variant="h4" sx={{ fontWeight: 600, textAlign: "center" }}>
+        <Typography variant="h4" sx={[kioskTitleSx, { textAlign: "center" }]}>
           Панель управления
         </Typography>
         <Button
           variant="contained"
-          color="inherit"
           startIcon={<LogoutIcon />}
           onClick={onLogout}
           disabled={busy}
-          sx={{
-            flexShrink: 0,
-            py: 1.25,
-            px: 2.5,
-            fontSize: "1rem",
-            color: "primary.main",
-            bgcolor: "primary.contrastText",
-          }}
+          disableElevation
+          sx={glassButtonSx}
         >
           Выйти
         </Button>
@@ -186,137 +160,169 @@ export function AdminPanelScreen({
           </Box>
         ) : (
           <Stack spacing={3}>
-            <Card variant="outlined">
-              <CardContent>
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    mb: 1.5,
-                  }}
-                >
-                  <Typography variant="h6">Текущий лимит</Typography>
-                  <Button onClick={() => void loadSummary()} disabled={busy}>
-                    Обновить
-                  </Button>
-                </Box>
-                <Divider sx={{ mb: 2 }} />
-                {limitIsSet && summary !== null ? (
-                  <Stack spacing={1.25}>
-                    <Row
-                      label="Установленный лимит"
-                      value={kopecksToRublesText(summary.limit_amount_kopecks)}
-                    />
-                    <Row
-                      label="Продано в рамках лимита"
-                      value={kopecksToRublesText(summary.sold_amount_kopecks)}
-                    />
-                    <Row
-                      label="Остаток лимита"
-                      value={kopecksToRublesText(
-                        summary.remaining_amount_kopecks,
-                      )}
-                      strong
-                    />
-                  </Stack>
-                ) : (
-                  <Typography color="text.secondary" sx={{ fontSize: "1.1rem" }}>
-                    Лимит пока не установлен
-                  </Typography>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card variant="outlined">
-              <CardContent>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  Новый лимит
+            <Box sx={glassPanelSx}>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  mb: 1.5,
+                }}
+              >
+                <Typography variant="h6" sx={{ fontWeight: 700, color: KIOSK_TEXT }}>
+                  Текущий лимит
                 </Typography>
+                <Button
+                  onClick={() => void loadSummary()}
+                  disabled={busy}
+                  disableElevation
+                  sx={glassButtonSx}
+                >
+                  Обновить
+                </Button>
+              </Box>
+              <Divider sx={{ mb: 2, borderColor: "rgba(180, 205, 200, 0.45)" }} />
+              {limitIsSet && summary !== null ? (
+                <Stack spacing={1.25}>
+                  <Row
+                    label="Установленный лимит"
+                    value={kopecksToRublesText(summary.limit_amount_kopecks)}
+                  />
+                  <Row
+                    label="Продано в рамках лимита"
+                    value={kopecksToRublesText(summary.sold_amount_kopecks)}
+                  />
+                  <Row
+                    label="Остаток лимита"
+                    value={kopecksToRublesText(
+                      summary.remaining_amount_kopecks,
+                    )}
+                    strong
+                  />
+                </Stack>
+              ) : (
+                <Typography
+                  sx={{ fontSize: "1.1rem", color: "rgba(28, 47, 66, 0.6)" }}
+                >
+                  Лимит пока не установлен
+                </Typography>
+              )}
+            </Box>
 
-                <Box
-                  sx={{
+            <Box sx={glassPanelSx}>
+              <Typography
+                variant="h6"
+                sx={{ mb: 2, fontWeight: 700, color: KIOSK_TEXT }}
+              >
+                Новый лимит
+              </Typography>
+
+              <Box
+                sx={[
+                  glassCardSx,
+                  {
                     mb: 2,
                     py: 2,
                     px: 2,
-                    borderRadius: 2,
-                    border: "2px solid",
-                    borderColor: "primary.main",
-                    bgcolor: "background.default",
                     textAlign: "center",
+                  },
+                ]}
+              >
+                <Typography
+                  sx={{
+                    fontSize: "2.6rem",
+                    fontWeight: 700,
+                    lineHeight: 1.1,
+                    color:
+                      rublesInput === "" ? "rgba(28, 47, 66, 0.4)" : KIOSK_TEXT,
                   }}
                 >
-                  <Typography
+                  {enteredText}
+                </Typography>
+              </Box>
+
+              {feedback !== null && (
+                <Alert
+                  severity={feedback.severity}
+                  sx={{ mb: 2 }}
+                  onClose={() => setFeedback(null)}
+                >
+                  {feedback.text}
+                </Alert>
+              )}
+
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, 1fr)",
+                  gap: 1.5,
+                  mb: 2,
+                }}
+              >
+                {KEYPAD_ROWS.flat().map((key) => (
+                  <Button
+                    key={key}
+                    onClick={() => handleKey(key)}
+                    disabled={busy}
+                    disableElevation
                     sx={{
-                      fontSize: "2.6rem",
+                      py: 2.5,
+                      minHeight: 72,
+                      fontSize: "1.6rem",
                       fontWeight: 700,
-                      lineHeight: 1.1,
-                      color: rublesInput === "" ? "text.disabled" : "text.primary",
+                      textTransform: "none",
+                      color: key === "clear" ? "#9c2229" : KIOSK_TEXT,
+                      bgcolor: "rgba(255, 255, 255, 0.92)",
+                      borderRadius: "16px",
+                      border: "1px solid rgba(180, 205, 200, 0.5)",
+                      boxShadow: "0 6px 16px rgba(26, 47, 66, 0.08)",
+                      "&:hover": {
+                        bgcolor: "#ffffff",
+                        boxShadow: "0 8px 20px rgba(26, 47, 66, 0.12)",
+                      },
                     }}
                   >
-                    {enteredText}
-                  </Typography>
-                </Box>
+                    {key === "clear" ? (
+                      "Очистить"
+                    ) : key === "back" ? (
+                      <BackspaceOutlinedIcon fontSize="large" />
+                    ) : (
+                      key
+                    )}
+                  </Button>
+                ))}
+              </Box>
 
-                {feedback !== null && (
-                  <Alert
-                    severity={feedback.severity}
-                    sx={{ mb: 2 }}
-                    onClose={() => setFeedback(null)}
-                  >
-                    {feedback.text}
-                  </Alert>
-                )}
-
-                <Box
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(3, 1fr)",
-                    gap: 1.5,
-                    mb: 2,
-                  }}
-                >
-                  {KEYPAD_ROWS.flat().map((key) => (
-                    <Button
-                      key={key}
-                      variant={key === "0" || /\d/.test(key) ? "outlined" : "contained"}
-                      color={key === "clear" ? "warning" : "primary"}
-                      onClick={() => handleKey(key)}
-                      disabled={busy}
-                      sx={{
-                        py: 2.5,
-                        fontSize: "1.6rem",
-                        fontWeight: 700,
-                        minHeight: 72,
-                      }}
-                    >
-                      {key === "clear" ? (
-                        "Очистить"
-                      ) : key === "back" ? (
-                        <BackspaceOutlinedIcon fontSize="large" />
-                      ) : (
-                        key
-                      )}
-                    </Button>
-                  ))}
-                </Box>
-
-                <Button
-                  variant="contained"
-                  onClick={() => void handleSetLimit()}
-                  disabled={busy}
-                  fullWidth
-                  sx={{ py: 1.75, fontSize: "1.2rem", fontWeight: 700 }}
-                  startIcon={
-                    busy ? (
-                      <CircularProgress size={22} color="inherit" />
-                    ) : undefined
-                  }
-                >
-                  Установить лимит
-                </Button>
-              </CardContent>
-            </Card>
+              <Button
+                variant="contained"
+                onClick={() => void handleSetLimit()}
+                disabled={busy}
+                fullWidth
+                disableElevation
+                sx={{
+                  py: 1.75,
+                  fontSize: "1.2rem",
+                  fontWeight: 700,
+                  textTransform: "none",
+                  color: KIOSK_TEXT,
+                  bgcolor: "#c6f0d7",
+                  borderRadius: "16px",
+                  border: "1px solid rgba(56, 160, 102, 0.75)",
+                  boxShadow: "0 8px 20px rgba(31, 170, 84, 0.22)",
+                  "&:hover": {
+                    bgcolor: "#b5e8cc",
+                    boxShadow: "0 10px 24px rgba(31, 170, 84, 0.28)",
+                  },
+                }}
+                startIcon={
+                  busy ? (
+                    <CircularProgress size={22} color="inherit" />
+                  ) : undefined
+                }
+              >
+                Установить лимит
+              </Button>
+            </Box>
           </Stack>
         )}
       </Container>
@@ -335,8 +341,10 @@ function Row({
 }) {
   return (
     <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
-      <Typography color="text.secondary">{label}</Typography>
-      <Typography sx={{ fontWeight: strong ? 700 : 500 }}>{value}</Typography>
+      <Typography sx={{ color: "rgba(28, 47, 66, 0.6)" }}>{label}</Typography>
+      <Typography sx={{ fontWeight: strong ? 700 : 500, color: KIOSK_TEXT }}>
+        {value}
+      </Typography>
     </Box>
   );
 }
