@@ -332,6 +332,7 @@ export function CourierScreen({ courierId, onLogout }: CourierScreenProps) {
             <CellGrid
               cells={cells}
               disabled={busy}
+              showStatusChips
               onSelect={(cell) => {
                 setOpError(null);
                 setSelectedCell(cell);

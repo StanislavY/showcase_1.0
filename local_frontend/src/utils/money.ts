@@ -14,6 +14,15 @@ export function kopecksToRublesText(value: number): string {
   return `${formatted} ₽`;
 }
 
+/** Format a product price stored in roubles on the backend. */
+export function rublesToText(value: number): string {
+  const formatted = value.toLocaleString("ru-RU", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `${formatted} ₽`;
+}
+
 /**
  * Convert a whole-rouble keypad string into kopecks.
  *

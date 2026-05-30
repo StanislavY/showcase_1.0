@@ -1,12 +1,14 @@
 import Box from "@mui/material/Box";
 import ButtonBase from "@mui/material/ButtonBase";
 import Typography from "@mui/material/Typography";
+import type { ReactNode } from "react";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import LockOpenOutlinedIcon from "@mui/icons-material/LockOpenOutlined";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import type { SvgIconComponent } from "@mui/icons-material";
 import type { Cell, LockStatus } from "../types/cell";
+import { rublesToText } from "../utils/money";
 import { getCellStatusView } from "./cellStatusView";
 
 interface CellCardProps {
@@ -14,6 +16,8 @@ interface CellCardProps {
   disabled?: boolean;
   onClick?: () => void;
   onSelect?: (cell: Cell) => void;
+  /** Status and lock chips in the card header (courier screen). */
+  showStatusChips?: boolean;
 }
 
 /** Feminine lock labels ("ячейка закрыта") shown on the small lock chip. */
@@ -73,14 +77,14 @@ export function CellCard({
   disabled = false,
   onClick,
   onSelect,
+  showStatusChips = false,
 }: CellCardProps) {
   const view = getCellStatusView(cell);
   const { tone } = view;
-  const StatusIcon = view.icon;
-  const lock = LOCK_VIEW[cell.lock_status];
 
   const hasProduct = !!cell.product_name && cell.product_name.trim() !== "";
   const productText = hasProduct ? cell.product_name : "Ячейка свободна";
+  const hasPrice = hasProduct && cell.product_price !== null;
 
   const hasHandler = onClick !== undefined || onSelect !== undefined;
   const interactive = hasHandler && !disabled;
@@ -91,14 +95,55 @@ export function CellCard({
     else if (onSelect !== undefined) onSelect(cell);
   };
 
+  const isCompact = !showStatusChips;
+
+  let statusChips: ReactNode = null;
+  if (showStatusChips) {
+    const StatusIcon = view.icon;
+    const lock = LOCK_VIEW[cell.lock_status];
+    statusChips = (
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-end",
+          gap: 0.4,
+          minWidth: 0,
+        }}
+      >
+        <CardChip
+          label={view.shortLabel}
+          icon={StatusIcon}
+          bg={tone.chipBg}
+          color={tone.chipColor}
+          border={tone.border}
+        />
+        <CardChip
+          label={lock.label}
+          icon={lock.icon}
+          bg="rgba(255, 255, 255, 0.6)"
+          color="rgba(45, 60, 72, 0.85)"
+          border="rgba(120, 134, 150, 0.4)"
+        />
+      </Box>
+    );
+  }
+
   const cardInner = (
       <Box
         className="cell-card"
         sx={{
-          minHeight: 124,
+          ...(isCompact
+            ? {
+                aspectRatio: "3 / 2",
+                width: "100%",
+                height: "100%",
+                minHeight: 0,
+                p: "12px",
+              }
+            : { minHeight: 124, p: 1.5 }),
           display: "flex",
           flexDirection: "column",
-          p: 1.5,
           borderRadius: "16px",
           bgcolor: tone.bg,
           border: "1px solid",
@@ -114,6 +159,7 @@ export function CellCard({
             alignItems: "flex-start",
             justifyContent: "space-between",
             gap: 0.75,
+            flexShrink: 0,
           }}
         >
           <Typography
@@ -127,36 +173,30 @@ export function CellCard({
           >
             #{cell.number}
           </Typography>
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "flex-end",
-              gap: 0.4,
-              minWidth: 0,
-            }}
-          >
-            <CardChip
-              label={view.shortLabel}
-              icon={StatusIcon}
-              bg={tone.chipBg}
-              color={tone.chipColor}
-              border={tone.border}
-            />
-            <CardChip
-              label={lock.label}
-              icon={lock.icon}
-              bg="rgba(255, 255, 255, 0.6)"
-              color="rgba(45, 60, 72, 0.85)"
-              border="rgba(120, 134, 150, 0.4)"
-            />
-          </Box>
+          {isCompact && hasPrice ? (
+            <Typography
+              component="span"
+              sx={{
+                flexShrink: 0,
+                fontSize: "0.82rem",
+                fontWeight: 800,
+                lineHeight: 1.1,
+                color: tone.numberColor,
+                textAlign: "right",
+              }}
+            >
+              {rublesToText(cell.product_price as number)}
+            </Typography>
+          ) : (
+            statusChips
+          )}
         </Box>
 
         <Box
           sx={{
-            flexGrow: 1,
-            mt: 1,
+            flex: "1 1 auto",
+            minHeight: 0,
+            mt: isCompact ? "12px" : 1,
             display: "flex",
             alignItems: "flex-start",
             gap: 0.6,
@@ -164,26 +204,51 @@ export function CellCard({
           }}
         >
           <Inventory2OutlinedIcon
-            sx={{ fontSize: 17, color: tone.iconColor, mt: "1px", flexShrink: 0 }}
+            sx={{
+              fontSize: isCompact ? 15 : 17,
+              color: tone.iconColor,
+              mt: "1px",
+              flexShrink: 0,
+            }}
           />
           <Typography
             sx={{
-              fontSize: "0.9rem",
+              fontSize: isCompact ? "0.78rem" : "0.9rem",
               fontWeight: hasProduct ? 700 : 600,
-              lineHeight: 1.2,
+              lineHeight: 1.25,
               color: hasProduct
                 ? "rgba(28, 42, 54, 0.92)"
                 : "rgba(28, 42, 54, 0.6)",
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
               wordBreak: "break-word",
+              overflowWrap: "anywhere",
+              ...(isCompact
+                ? {}
+                : {
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                  }),
             }}
           >
             {productText}
           </Typography>
         </Box>
+
+        {!isCompact && hasPrice && (
+          <Typography
+            sx={{
+              flexShrink: 0,
+              mt: 0.35,
+              fontSize: "0.95rem",
+              fontWeight: 800,
+              lineHeight: 1.15,
+              color: tone.numberColor,
+            }}
+          >
+            {rublesToText(cell.product_price as number)}
+          </Typography>
+        )}
       </Box>
   );
 
@@ -193,6 +258,7 @@ export function CellCard({
         sx={{
           display: "block",
           width: "100%",
+          height: "100%",
           borderRadius: "16px",
           opacity: disabled ? 0.55 : 1,
           "& .cell-card": { height: "100%" },
@@ -212,6 +278,7 @@ export function CellCard({
       sx={{
         display: "block",
         width: "100%",
+        height: "100%",
         textAlign: "left",
         borderRadius: "16px",
         opacity: disabled ? 0.55 : 1,
