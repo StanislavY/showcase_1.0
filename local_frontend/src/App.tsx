@@ -10,6 +10,11 @@ import { AdminPanelScreen } from "./components/AdminPanelScreen";
 import { CourierLoginDialog } from "./components/CourierLoginDialog";
 import { CourierScreen } from "./components/CourierScreen";
 import { StartIssueScreen } from "./components/StartIssueScreen";
+import {
+  getTerminalMode,
+  setTerminalMode,
+  type TerminalMode,
+} from "./settings/terminalMode";
 
 const theme = createTheme({
   palette: {
@@ -32,6 +37,9 @@ export default function App() {
   const [adminToken, setAdminToken] = useState<string | null>(null);
   const [courierLoginOpen, setCourierLoginOpen] = useState(false);
   const [adminLoginOpen, setAdminLoginOpen] = useState(false);
+  const [terminalMode, setTerminalModeState] = useState<TerminalMode>(() =>
+    getTerminalMode(),
+  );
 
   // On startup, only a courier session is auto-restored. The admin panel
   // never opens automatically after a reload — it requires pressing the
@@ -85,6 +93,11 @@ export default function App() {
     setMode("issue");
   };
 
+  const handleTerminalModeChange = (mode: TerminalMode) => {
+    setTerminalMode(mode);
+    setTerminalModeState(mode);
+  };
+
   // Full sign-out: drop the admin token before returning to the start screen.
   const handleAdminLogout = () => {
     sessionStorage.removeItem(ADMIN_TOKEN_KEY);
@@ -123,6 +136,8 @@ export default function App() {
     content = (
       <AdminPanelScreen
         adminToken={adminToken}
+        terminalMode={terminalMode}
+        onTerminalModeChange={handleTerminalModeChange}
         onBack={handleAdminBack}
         onLogout={handleAdminLogout}
       />
@@ -131,6 +146,7 @@ export default function App() {
     content = (
       <>
         <StartIssueScreen
+          terminalMode={terminalMode}
           onCourierMode={() => setCourierLoginOpen(true)}
           onAdminMode={() => setAdminLoginOpen(true)}
         />

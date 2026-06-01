@@ -2,9 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Checkbox from "@mui/material/Checkbox";
 import CircularProgress from "@mui/material/CircularProgress";
 import Container from "@mui/material/Container";
 import Divider from "@mui/material/Divider";
+import FormControlLabel from "@mui/material/FormControlLabel";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -20,12 +22,16 @@ import {
   kioskHeaderSx,
   kioskRootSx,
   kioskTitleSx,
+  KIOSK_ACCENT,
   KIOSK_TEXT,
 } from "./kioskScreenStyles";
 import type { SalesLimitSummary } from "../types/sales";
+import type { TerminalMode } from "../settings/terminalMode";
 
 interface AdminPanelScreenProps {
   adminToken: string;
+  terminalMode: TerminalMode;
+  onTerminalModeChange: (mode: TerminalMode) => void;
   onBack: () => void;
   onLogout: () => void;
 }
@@ -47,6 +53,8 @@ const KEYPAD_ROWS: string[][] = [
 
 export function AdminPanelScreen({
   adminToken,
+  terminalMode,
+  onTerminalModeChange,
   onBack,
   onLogout,
 }: AdminPanelScreenProps) {
@@ -160,6 +168,40 @@ export function AdminPanelScreen({
           </Box>
         ) : (
           <Stack spacing={3}>
+            <Box sx={glassPanelSx}>
+              <Typography
+                variant="h6"
+                sx={{ mb: 1.5, fontWeight: 700, color: KIOSK_TEXT }}
+              >
+                Режим работы постамата
+              </Typography>
+              <Divider sx={{ mb: 1, borderColor: "rgba(180, 205, 200, 0.45)" }} />
+              <Stack>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={terminalMode === "kiosk"}
+                      onChange={() => onTerminalModeChange("kiosk")}
+                      sx={{ color: KIOSK_TEXT, "&.Mui-checked": { color: KIOSK_ACCENT } }}
+                    />
+                  }
+                  label="Режим киоска"
+                  sx={{ color: KIOSK_TEXT }}
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={terminalMode === "online_sales"}
+                      onChange={() => onTerminalModeChange("online_sales")}
+                      sx={{ color: KIOSK_TEXT, "&.Mui-checked": { color: KIOSK_ACCENT } }}
+                    />
+                  }
+                  label="Режим онлайн продаж"
+                  sx={{ color: KIOSK_TEXT }}
+                />
+              </Stack>
+            </Box>
+
             <Box sx={glassPanelSx}>
               <Box
                 sx={{

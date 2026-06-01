@@ -4,6 +4,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Container from "@mui/material/Container";
+import Snackbar from "@mui/material/Snackbar";
 import Typography from "@mui/material/Typography";
 import EngineeringIcon from "@mui/icons-material/Engineering";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
@@ -19,11 +20,16 @@ import {
 } from "./kioskScreenStyles";
 import type { Cell } from "../types/cell";
 import type { SalesLimitSummary } from "../types/sales";
+import type { TerminalMode } from "../settings/terminalMode";
 
 interface StartIssueScreenProps {
+  terminalMode: TerminalMode;
   onCourierMode: () => void;
   onAdminMode: () => void;
 }
+
+const ONLINE_SALES_PLACEHOLDER =
+  "Режим онлайн-продаж будет реализован следующим этапом";
 
 type Status = { severity: "info" | "success" | "error"; text: string };
 
@@ -61,15 +67,18 @@ function isCellSellable(cell: Cell): boolean {
 }
 
 export function StartIssueScreen({
+  terminalMode,
   onCourierMode,
   onAdminMode,
 }: StartIssueScreenProps) {
+  const isOnlineSales = terminalMode === "online_sales";
   const [cells, setCells] = useState<Cell[]>([]);
   const [limit, setLimit] = useState<SalesLimitSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>(DEFAULT_STATUS);
+  const [onlineSalesNotice, setOnlineSalesNotice] = useState(false);
 
   const refresh = useCallback(async () => {
     const [cellsData, limitData] = await Promise.all([
@@ -81,6 +90,12 @@ export function StartIssueScreen({
   }, []);
 
   useEffect(() => {
+    // The online-sales mode does not display cells, so it must not query the
+    // backend for them. The kiosk fetch behaviour is left unchanged.
+    if (isOnlineSales) {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     void (async () => {
       setLoading(true);
@@ -96,7 +111,7 @@ export function StartIssueScreen({
     return () => {
       cancelled = true;
     };
-  }, [refresh]);
+  }, [refresh, isOnlineSales]);
 
   // Limit is set but fully spent: warn proactively and block selling so the
   // customer does not have to tap a cell to discover the limit is exhausted.
@@ -155,6 +170,42 @@ export function StartIssueScreen({
         }}
       >
         <Box sx={[glassPanelSx, { bgcolor: "rgba(255, 255, 255, 0.5)" }]}>
+          {isOnlineSales ? (
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                minHeight: { xs: "50vh", md: "60vh" },
+                py: 6,
+              }}
+            >
+              <Button
+                variant="contained"
+                color="error"
+                onClick={() => setOnlineSalesNotice(true)}
+                disableElevation
+                sx={{
+                  maxWidth: 720,
+                  px: { xs: 4, md: 7 },
+                  py: { xs: 3, md: 4 },
+                  fontSize: { xs: "1.5rem", md: "2.1rem" },
+                  fontWeight: 800,
+                  lineHeight: 1.2,
+                  textTransform: "none",
+                  textAlign: "center",
+                  borderRadius: "24px",
+                  boxShadow: "0 16px 40px rgba(198, 40, 40, 0.4)",
+                  "&:hover": {
+                    boxShadow: "0 20px 48px rgba(198, 40, 40, 0.5)",
+                  },
+                }}
+              >
+                Отсканируйте QR код товара для покупки
+              </Button>
+            </Box>
+          ) : (
+            <>
           <Alert
             severity={limitExhausted ? "error" : status.severity}
             sx={{ mb: 2, fontSize: "1.1rem" }}
@@ -223,6 +274,8 @@ export function StartIssueScreen({
               />
             </>
           )}
+            </>
+          )}
         </Box>
       </Container>
 
@@ -259,6 +312,21 @@ export function StartIssueScreen({
           Режим курьера
         </Button>
       </Box>
+
+      <Snackbar
+        open={onlineSalesNotice}
+        autoHideDuration={4000}
+        onClose={() => setOnlineSalesNotice(false)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          severity="info"
+          onClose={() => setOnlineSalesNotice(false)}
+          sx={{ width: "100%" }}
+        >
+          {ONLINE_SALES_PLACEHOLDER}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
