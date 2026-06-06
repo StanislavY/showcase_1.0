@@ -16,7 +16,9 @@ from app.api import (
     courier_router,
     hardware_router,
     health_router,
+    online_sales_router,
     sales_router,
+    sync_router,
 )
 from app.core.config import config
 from app.db.init_db import init_database
@@ -65,6 +67,15 @@ def create_app() -> FastAPI:
     application.include_router(
         sales_router.router,
         prefix=config.api_prefix,
+    )
+    application.include_router(
+        online_sales_router.router,
+        prefix=config.api_prefix,
+    )
+    application.include_router(
+        sync_router.router,
+        prefix=config.api_prefix,
+        tags=["sync"],
     )
     return application
 

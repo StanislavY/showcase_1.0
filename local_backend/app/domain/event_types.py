@@ -30,3 +30,11 @@ class EventType(StrEnum):
     SALE_STARTED = "SALE_STARTED"
     SALE_COMPLETED = "SALE_COMPLETED"
     SALE_FAILED = "SALE_FAILED"
+
+    # Online-sales pickup workflow (cloud-driven issuance).
+    #
+    # These values intentionally match the cloud API v2 TerminalEvent choices
+    # (OPEN_CONFIRMED / ISSUE_COMPLETED / ISSUE_FAILED) so an event can be
+    # forwarded to ``POST /api/v2/terminal/issue-events/`` without remapping.
+    ISSUE_COMPLETED = "ISSUE_COMPLETED"
+    ISSUE_FAILED = "ISSUE_FAILED"

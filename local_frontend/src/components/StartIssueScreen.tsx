@@ -4,12 +4,12 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Container from "@mui/material/Container";
-import Snackbar from "@mui/material/Snackbar";
 import Typography from "@mui/material/Typography";
 import EngineeringIcon from "@mui/icons-material/Engineering";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import { fetchCells } from "../api/cellsApi";
 import { fetchSalesLimit, sellFromCell } from "../api/salesApi";
+import { pickupOnlineSale } from "../api/onlineSalesApi";
 import { ApiError } from "../api/client";
 import { CellGrid } from "./CellGrid";
 import { CELL_STATUS_LEGEND, CELL_STATUS_TONES } from "./cellStatusView";
@@ -20,6 +20,10 @@ import {
 } from "./kioskScreenStyles";
 import type { Cell } from "../types/cell";
 import type { SalesLimitSummary } from "../types/sales";
+import {
+  ONLINE_SALES_CLOUD_UNAVAILABLE,
+  type OnlineSalesPickupResponse,
+} from "../types/onlineSales";
 import type { TerminalMode } from "../settings/terminalMode";
 
 interface StartIssueScreenProps {
@@ -28,8 +32,14 @@ interface StartIssueScreenProps {
   onAdminMode: () => void;
 }
 
-const ONLINE_SALES_PLACEHOLDER =
-  "Режим онлайн-продаж будет реализован следующим этапом";
+// Seconds the success result stays on screen before returning to the base
+// "Забрать товар" screen.
+const RETURN_TO_BASE_SECONDS = 10;
+
+// Shown verbatim when the backend reports the cloud is unreachable, so the
+// customer is told to scan the QR code instead.
+const CLOUD_UNAVAILABLE_TEXT =
+  "Нет интернета, отсканируйте полученный QR-код";
 
 type Status = { severity: "info" | "success" | "error"; text: string };
 
@@ -66,6 +76,15 @@ function isCellSellable(cell: Cell): boolean {
   );
 }
 
+/** Build the success line, naming the cells the backend reported as opened. */
+function buildPickupSuccessText(result: OnlineSalesPickupResponse): string {
+  const opened = result.opened_cells ?? [];
+  if (opened.length > 0) {
+    return `Ячейки №${opened.join(", ")} открыты. Заберите товар.`;
+  }
+  return result.message;
+}
+
 export function StartIssueScreen({
   terminalMode,
   onCourierMode,
@@ -78,7 +97,14 @@ export function StartIssueScreen({
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>(DEFAULT_STATUS);
-  const [onlineSalesNotice, setOnlineSalesNotice] = useState(false);
+
+  // Online-sales pickup state. `pickupBusy` is the single guard that prevents
+  // a second request while one is running. `returnSeconds` drives the
+  // countdown back to the base screen after a successful pickup.
+  const [pickupBusy, setPickupBusy] = useState(false);
+  const [pickupStatus, setPickupStatus] = useState<Status | null>(null);
+  const [pickupNextAction, setPickupNextAction] = useState<string | null>(null);
+  const [returnSeconds, setReturnSeconds] = useState<number | null>(null);
 
   const refresh = useCallback(async () => {
     const [cellsData, limitData] = await Promise.all([
@@ -154,6 +180,64 @@ export function StartIssueScreen({
     }
   };
 
+  // Countdown back to the base "Забрать товар" screen after a successful
+  // pickup. When it reaches zero we clear the result and let the customer
+  // start a new pickup.
+  useEffect(() => {
+    if (returnSeconds === null) return;
+    if (returnSeconds <= 0) {
+      setPickupStatus(null);
+      setPickupNextAction(null);
+      setReturnSeconds(null);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setReturnSeconds((current) => (current === null ? null : current - 1));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [returnSeconds]);
+
+  const applyPickupResult = (result: OnlineSalesPickupResponse) => {
+    setPickupNextAction(result.next_action ?? null);
+
+    if (result.code === ONLINE_SALES_CLOUD_UNAVAILABLE) {
+      setPickupStatus({ severity: "error", text: CLOUD_UNAVAILABLE_TEXT });
+      return;
+    }
+    if (result.success) {
+      setPickupStatus({
+        severity: "success",
+        text: buildPickupSuccessText(result),
+      });
+      setReturnSeconds(RETURN_TO_BASE_SECONDS);
+      return;
+    }
+    setPickupStatus({ severity: "error", text: result.message });
+  };
+
+  const handlePickup = async () => {
+    // A second tap while a pickup is running must not start a second request.
+    if (pickupBusy) return;
+    setPickupBusy(true);
+    setReturnSeconds(null);
+    setPickupNextAction(null);
+    setPickupStatus({
+      severity: "info",
+      text: "Проверяем оплаченные товары...",
+    });
+    await delay(350);
+    setPickupStatus({ severity: "info", text: "Открываем ячейки..." });
+    try {
+      const result = await pickupOnlineSale();
+      applyPickupResult(result);
+    } catch (err) {
+      setPickupStatus({ severity: "error", text: toMessage(err) });
+      setPickupNextAction(null);
+    } finally {
+      setPickupBusy(false);
+    }
+  };
+
   return (
     <Box
       sx={[
@@ -174,16 +258,57 @@ export function StartIssueScreen({
             <Box
               sx={{
                 display: "flex",
+                flexDirection: "column",
                 justifyContent: "center",
                 alignItems: "center",
+                gap: 3,
                 minHeight: { xs: "50vh", md: "60vh" },
                 py: 6,
               }}
             >
+              {pickupStatus !== null && (
+                <Box sx={{ width: "100%", maxWidth: 720 }}>
+                  <Alert severity={pickupStatus.severity} sx={{ fontSize: "1.2rem" }}>
+                    {pickupStatus.text}
+                  </Alert>
+                  {pickupNextAction !== null && (
+                    <Typography
+                      sx={{
+                        mt: 1.5,
+                        textAlign: "center",
+                        fontSize: "1.05rem",
+                        fontWeight: 600,
+                        color: "rgba(28, 47, 66, 0.75)",
+                      }}
+                    >
+                      {pickupNextAction}
+                    </Typography>
+                  )}
+                  {returnSeconds !== null && returnSeconds > 0 && (
+                    <Typography
+                      sx={{
+                        mt: 1,
+                        textAlign: "center",
+                        fontSize: "0.95rem",
+                        color: "rgba(28, 47, 66, 0.6)",
+                      }}
+                    >
+                      Возврат к началу через {returnSeconds} сек.
+                    </Typography>
+                  )}
+                </Box>
+              )}
+
               <Button
                 variant="contained"
                 color="error"
-                onClick={() => setOnlineSalesNotice(true)}
+                onClick={() => void handlePickup()}
+                disabled={pickupBusy || returnSeconds !== null}
+                startIcon={
+                  pickupBusy ? (
+                    <CircularProgress size={28} color="inherit" />
+                  ) : undefined
+                }
                 disableElevation
                 sx={{
                   maxWidth: 720,
@@ -201,7 +326,7 @@ export function StartIssueScreen({
                   },
                 }}
               >
-                Отсканируйте QR код товара для покупки
+                Забрать товар
               </Button>
             </Box>
           ) : (
@@ -312,21 +437,6 @@ export function StartIssueScreen({
           Режим курьера
         </Button>
       </Box>
-
-      <Snackbar
-        open={onlineSalesNotice}
-        autoHideDuration={4000}
-        onClose={() => setOnlineSalesNotice(false)}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
-        <Alert
-          severity="info"
-          onClose={() => setOnlineSalesNotice(false)}
-          sx={{ width: "100%" }}
-        >
-          {ONLINE_SALES_PLACEHOLDER}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 }

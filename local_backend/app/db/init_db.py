@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS courier_operations (
 _CREATE_EVENTS = """
 CREATE TABLE IF NOT EXISTS events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    local_event_id TEXT,
     event_type TEXT NOT NULL,
     cell_number INTEGER,
     operation_id INTEGER,
@@ -52,8 +53,17 @@ CREATE TABLE IF NOT EXISTS events (
     payload_json TEXT NOT NULL DEFAULT '{}',
     created_at TEXT NOT NULL,
     sync_status TEXT NOT NULL,
-    sent_at TEXT
+    sent_at TEXT,
+    cloud_error_message TEXT
 );
+"""
+
+# A UNIQUE index (not a column constraint) lets us add the column to legacy
+# tables: SQLite forbids ``ALTER TABLE ADD COLUMN ... UNIQUE``. Multiple NULLs
+# are allowed, so partially-migrated rows do not clash.
+_CREATE_EVENTS_LOCAL_ID_INDEX = """
+CREATE UNIQUE INDEX IF NOT EXISTS idx_events_local_event_id
+ON events (local_event_id);
 """
 
 _CREATE_SALES_LIMITS = """
@@ -122,10 +132,13 @@ def _migrate_cells(conn) -> None:
 
 
 def _migrate_events(conn) -> None:
-    """Add the ``sale_id`` column to an existing events table.
+    """Add missing columns to an existing events table without data loss.
 
-    Older databases created the events table without ``sale_id``. SQLite
-    has no ``ADD COLUMN IF NOT EXISTS``, so inspect the columns first.
+    Older databases may lack ``sale_id``, ``local_event_id`` or
+    ``cloud_error_message``. SQLite has no ``ADD COLUMN IF NOT EXISTS``, so we
+    inspect the columns first and add only what is missing. ``local_event_id``
+    is then backfilled for legacy rows (so they can be synced) and a UNIQUE
+    index is created.
     """
     existing = {
         row["name"]
@@ -133,6 +146,18 @@ def _migrate_events(conn) -> None:
     }
     if "sale_id" not in existing:
         conn.execute("ALTER TABLE events ADD COLUMN sale_id INTEGER")
+    if "local_event_id" not in existing:
+        # No UNIQUE here: SQLite rejects adding a UNIQUE column via ALTER.
+        conn.execute("ALTER TABLE events ADD COLUMN local_event_id TEXT")
+    if "cloud_error_message" not in existing:
+        conn.execute("ALTER TABLE events ADD COLUMN cloud_error_message TEXT")
+
+    # Backfill a stable, unique id for legacy rows that predate the column.
+    conn.execute(
+        "UPDATE events SET local_event_id = 'legacy-' || id "
+        "WHERE local_event_id IS NULL"
+    )
+    conn.execute(_CREATE_EVENTS_LOCAL_ID_INDEX)
 
 
 def _seed_cells(conn) -> None:
